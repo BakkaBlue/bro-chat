@@ -10,7 +10,8 @@ import * as api from "../api/commands";
 
 // 右栏：对话头部（重载/清理）+ 消息列表 + 输入区
 export default function ChatPane() {
-  const { messages, loading, lastError, streaming, lastReplyMs, load } = useChatStore();
+  const { messages, messagesFor, loading, lastError, streaming, lastReplyMs, load } =
+    useChatStore();
   const convId = useConversationStore((s) => s.selectedId);
   const convTitle = useConversationStore(
     (s) => s.items.find((c) => c.id === s.selectedId)?.title,
@@ -30,20 +31,23 @@ export default function ChatPane() {
   const streamingActive = streaming !== null && streaming.conversationId === convId;
   const autoScroll = settings?.chat_auto_scroll ?? true;
 
+  // 按消息归属对话渲染，避免跨对话串显（快速切换/流式事件竞态）
+  const visibleMessages = messagesFor === convId ? messages : [];
+
   // 最后一条 assistant 回复的 id（只有它可重新生成）
   const lastAssistantId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messages[i].id;
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      if (visibleMessages[i].role === "assistant") return visibleMessages[i].id;
     }
     return null;
-  }, [messages]);
+  }, [visibleMessages]);
   // 最后一条用户消息的 id（只有它可重新发送）
   const lastUserId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].id;
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      if (visibleMessages[i].role === "user") return visibleMessages[i].id;
     }
     return null;
-  }, [messages]);
+  }, [visibleMessages]);
   const regenerate = useChatStore((s) => s.regenerate);
   const resend = useChatStore((s) => s.resend);
 
@@ -111,8 +115,9 @@ export default function ChatPane() {
           </button>
           <button
             onClick={clearChat}
-            title="清理当前对话"
-            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] text-neutral-400 hover:bg-rose-50 hover:text-rose-500 dark:border-neutral-600 dark:hover:bg-rose-900/20"
+            disabled={streamingActive}
+            title={streamingActive ? "生成中不能清理" : "清理当前对话"}
+            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] text-neutral-400 hover:bg-rose-50 hover:text-rose-500 disabled:opacity-40 dark:border-neutral-600 dark:hover:bg-rose-900/20"
           >
             🗑
           </button>
@@ -124,15 +129,15 @@ export default function ChatPane() {
         onScroll={onScroll}
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
       >
-        {loading && messages.length === 0 ? (
+        {loading && visibleMessages.length === 0 ? (
           <div className="py-8 text-center text-xs text-neutral-400">加载中…</div>
-        ) : messages.length === 0 ? (
+        ) : visibleMessages.length === 0 ? (
           <div className="py-8 text-center text-sm text-neutral-400">
             发送第一条消息开始对话
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {messages.map((m) => (
+            {visibleMessages.map((m) => (
               <MessageBubble
                 key={m.id}
                 message={m}

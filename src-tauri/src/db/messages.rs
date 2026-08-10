@@ -94,11 +94,12 @@ pub fn list_limited(conn: &Connection, conversation_id: &str, limit: i64) -> App
     Ok(out)
 }
 
-/// 按 seq 升序取对话消息（内部上下文组装用，无上限）。
+/// 按 seq 升序取对话消息（内部上下文组装用，无上限；
+/// 裁剪由 trim_history 按 token 预算负责）。
 pub fn list(conn: &Connection, conversation_id: &str) -> AppResult<Vec<Message>> {
     let mut stmt = conn.prepare(
         "SELECT id, conversation_id, role, content, seq, created_at
-         FROM messages WHERE conversation_id = ?1 ORDER BY seq ASC LIMIT 500",
+         FROM messages WHERE conversation_id = ?1 ORDER BY seq ASC",
     )?;
     let rows = stmt.query_map(params![conversation_id], |r| {
         Ok(Message {

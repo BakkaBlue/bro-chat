@@ -4,6 +4,7 @@ use crate::db::{conversations, messages, settings};
 use crate::models::{ConversationSummary, Message};
 use crate::state::AppState;
 
+use super::chat::active_conversation_id;
 use super::with_db;
 
 #[tauri::command]
@@ -40,6 +41,10 @@ pub fn rename_conversation(
 
 #[tauri::command]
 pub fn delete_conversation(state: State<AppState>, id: String) -> Result<(), String> {
+    // 生成中删除会导致流式回复丢失/孤立，直接拒绝
+    if active_conversation_id(&state).as_deref() == Some(id.as_str()) {
+        return Err("该对话正在生成回复，请先停止".into());
+    }
     with_db(&state, |conn| conversations::delete(conn, &id))
 }
 
@@ -63,5 +68,9 @@ pub fn update_message(state: State<AppState>, id: String, content: String) -> Re
 /// 清空当前对话的全部消息
 #[tauri::command]
 pub fn clear_conversation(state: State<AppState>, id: String) -> Result<(), String> {
+    // 生成中清理会导致流式回复"复活"进空对话，直接拒绝
+    if active_conversation_id(&state).as_deref() == Some(id.as_str()) {
+        return Err("该对话正在生成回复，请先停止".into());
+    }
     with_db(&state, |conn| messages::delete_all(conn, &id))
 }

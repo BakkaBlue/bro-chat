@@ -9,17 +9,19 @@ export default function ChatInput() {
   const send = useChatStore((s) => s.send);
   const stop = useChatStore((s) => s.stop);
   const streaming = useChatStore((s) => s.streaming);
+  const sending = useChatStore((s) => s.sending);
   const enterMode = useSettingsStore((s) => s.settings?.chat_enter_mode ?? "");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const canSend = text.trim().length > 0 && !streaming;
+  const canSend = text.trim().length > 0 && !streaming && !sending;
   // newline 模式：Enter 换行、Ctrl+Enter 发送；其他模式：Enter 发送
   const enterSends = enterMode !== "newline";
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSend) return;
-    send(text);
-    setText("");
+    // 发送失败时不丢输入内容
+    const ok = await send(text);
+    if (ok) setText("");
     textareaRef.current?.focus();
   };
 

@@ -73,12 +73,21 @@ export default function App() {
     );
   }, [settings?.ui_font_size]);
 
-  // 界面设置：效果 class 组合
+  // 界面设置：效果 class 组合（只增删效果 class，绝不覆盖布局 class）
   useEffect(() => {
     const cls = document.getElementById("app-root");
     if (!cls) return;
+    const EFFECTS = [
+      "glass-blur",
+      "text-shadow",
+      "reduce-motion",
+      "avatar-circle",
+      "chat-flat",
+      "msg-anim",
+      "avatar-hover-zoom",
+    ];
     const s = settings;
-    const list = [
+    const active = [
       s?.ui_glass_blur ? "glass-blur" : "",
       s?.ui_text_shadow ? "text-shadow" : "",
       s?.ui_reduce_motion ? "reduce-motion" : "",
@@ -87,7 +96,8 @@ export default function App() {
       s?.ui_message_animation ? "msg-anim" : "",
       s?.ui_avatar_hover_zoom ? "avatar-hover-zoom" : "",
     ].filter(Boolean);
-    cls.className = list.join(" ");
+    EFFECTS.forEach((c) => cls.classList.remove(c));
+    active.forEach((c) => cls.classList.add(c));
   }, [
     settings?.ui_glass_blur,
     settings?.ui_text_shadow,

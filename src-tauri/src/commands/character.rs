@@ -4,10 +4,11 @@ use tauri::State;
 
 use crate::avatar;
 use crate::cards;
-use crate::db::{characters, lorebooks};
+use crate::db::{characters, conversations, lorebooks};
 use crate::models::{Character, CharacterInput, CharacterSummary};
 use crate::state::AppState;
 
+use super::chat::active_conversation_id;
 use super::with_db;
 
 #[tauri::command]
@@ -39,7 +40,16 @@ pub fn update_character(
 
 #[tauri::command]
 pub fn delete_character(state: State<AppState>, id: String) -> Result<(), String> {
-    with_db(&state, |conn| characters::delete(conn, &id))
+    // 该角色有对话正在生成时删除会级联丢失流式回复，拒绝
+    with_db(&state, |conn| {
+        let convs = conversations::list_by_character(conn, &id)?;
+        if let Some(active) = active_conversation_id(&state) {
+            if convs.iter().any(|c| c.id == active) {
+                return Err(crate::error::AppError::other("该角色有对话正在生成回复，请先停止"));
+            }
+        }
+        characters::delete(conn, &id)
+    })
 }
 
 #[tauri::command]

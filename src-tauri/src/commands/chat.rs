@@ -1,5 +1,5 @@
-//! 流式聊天：send_message 组装上下文并 spawn 流任务；cancel_chat 取消。
-//! 事件协议（Rust → 前端）：
+//! 流式聊天：send_message/regenerate/resend_last 组装上下文并 spawn 流任务；
+//! cancel_chat 取消。事件协议（Rust → 前端）：
 //!   chat:chunk      { requestId, delta }
 //!   chat:done       { requestId, messageId }
 //!   chat:error      { requestId, message, partialSaved }
@@ -67,7 +67,7 @@ struct CancelledEvent {
 }
 
 /// 发送一条用户消息，返回 requestId。
-/// 流程：单飞检查 → 快照（角色/设置/插用户消息/取历史）→ 组上下文 → spawn 流任务。
+/// 快照在事务内完成（失败整体回滚，不留孤儿消息）。
 #[tauri::command]
 pub async fn send_message(
     state: State<'_, AppState>,
@@ -90,13 +90,14 @@ pub async fn send_message(
         }
         let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
             let conn = state.db.lock().unwrap();
-            let conv = conversations::get_required(&conn, &conversation_id)?;
-            let character = characters::get_required(&conn, &conv.character_id)?;
-            let s = settings::get(&conn)?;
-            messages::insert(&conn, &conversation_id, "user", &content)?;
-            let history = messages::list(&conn, &conversation_id)?;
+            let tx = conn.unchecked_transaction()?;
+            let conv = conversations::get_required(&tx, &conversation_id)?;
+            let character = characters::get_required(&tx, &conv.character_id)?;
+            let s = settings::get(&tx)?;
+            messages::insert(&tx, &conversation_id, "user", &content)?;
+            let history = messages::list(&tx, &conversation_id)?;
             // 第一条用户消息自动生成标题
-            let user_count: i64 = conn.query_row(
+            let user_count: i64 = tx.query_row(
                 "SELECT COUNT(*) FROM messages WHERE conversation_id = ?1 AND role = 'user'",
                 rusqlite::params![conversation_id],
                 |r| r.get(0),
@@ -104,16 +105,18 @@ pub async fn send_message(
             if user_count == 1 {
                 let title: String = content.chars().take(24).collect::<String>()
                     + if content.chars().count() > 24 { "…" } else { "" };
-                conversations::rename_if_untitled(&conn, &conversation_id, &title)?;
+                conversations::rename_if_untitled(&tx, &conversation_id, &title)?;
             }
-            let lore = lore_for(&conn, &conv.character_id, &history)?;
+            let lore = lore_for(&tx, &conv.character_id, &history)?;
+            tx.commit()?;
             Ok((character, s, history, lore))
         })();
         let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         *slot = Some(ActiveChat {
             request_id: request_id.clone(),
-            cancel_tx,
+            conversation_id: conversation_id.clone(),
+            cancel_tx: Mutex::new(Some(cancel_tx)),
         });
         (character, s, history, lore, cancel_rx)
     };
@@ -133,12 +136,21 @@ pub async fn send_message(
         body,
     };
 
-    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    spawn_stream_task(
+        state.inner(),
+        app,
+        request_id.clone(),
+        cancel_rx,
+        cfg,
+        conversation_id,
+        None,
+    );
     Ok(request_id)
 }
 
-/// 重新生成最后一条 assistant 回复：删除该条后重新发起流式请求。
-/// 若最后一条是 user 消息（无回复可删），直接重新生成。
+/// 重新生成最后一条 assistant 回复。
+/// 旧回复**延迟删除**：仅当新回复成功保存后在同一锁区删除；
+/// 失败/取消时旧回复保留，避免数据丢失。
 #[tauri::command]
 pub async fn regenerate(
     state: State<'_, AppState>,
@@ -147,33 +159,41 @@ pub async fn regenerate(
 ) -> Result<String, String> {
     let request_id = Uuid::new_v4().to_string();
 
-    let (character, s, history, lore, cancel_rx) = {
+    let (character, s, history, lore, pending_delete, cancel_rx) = {
         let mut slot = state.chat.lock().unwrap();
         if slot.is_some() {
             return Err("已有生成中的回复，请先停止".into());
         }
-        let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
-            let conn = state.db.lock().unwrap();
-            let conv = conversations::get_required(&conn, &conversation_id)?;
-            let character = characters::get_required(&conn, &conv.character_id)?;
-            let s = settings::get(&conn)?;
-            let mut history = messages::list(&conn, &conversation_id)?;
-            if let Some(last) = history.last() {
-                if last.role == "assistant" {
-                    messages::delete_by_id(&conn, &last.id)?;
-                    history.pop();
-                }
-            }
-            let lore = lore_for(&conn, &conv.character_id, &history)?;
-            Ok((character, s, history, lore))
-        })();
-        let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
+        let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection, Option<String>)> =
+            (|| {
+                let conn = state.db.lock().unwrap();
+                let tx = conn.unchecked_transaction()?;
+                let conv = conversations::get_required(&tx, &conversation_id)?;
+                let character = characters::get_required(&tx, &conv.character_id)?;
+                let s = settings::get(&tx)?;
+                let mut history = messages::list(&tx, &conversation_id)?;
+                // 只从上下文里移除，不删 DB（成功后再删）
+                let pending_delete = match history.last() {
+                    Some(last) if last.role == "assistant" => {
+                        let id = last.id.clone();
+                        history.pop();
+                        Some(id)
+                    }
+                    _ => None,
+                };
+                let lore = lore_for(&tx, &conv.character_id, &history)?;
+                tx.commit()?;
+                Ok((character, s, history, lore, pending_delete))
+            })();
+        let (character, s, history, lore, pending_delete) =
+            snapshot.map_err(|e| e.to_string())?;
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         *slot = Some(ActiveChat {
             request_id: request_id.clone(),
-            cancel_tx,
+            conversation_id: conversation_id.clone(),
+            cancel_tx: Mutex::new(Some(cancel_tx)),
         });
-        (character, s, history, lore, cancel_rx)
+        (character, s, history, lore, pending_delete, cancel_rx)
     };
 
     let request_messages = build_request_messages(&character, &s, &history, &lore);
@@ -184,7 +204,15 @@ pub async fn regenerate(
         body,
     };
 
-    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    spawn_stream_task(
+        state.inner(),
+        app,
+        request_id.clone(),
+        cancel_rx,
+        cfg,
+        conversation_id,
+        pending_delete,
+    );
     Ok(request_id)
 }
 
@@ -204,30 +232,33 @@ pub async fn resend_last(
         }
         let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
             let conn = state.db.lock().unwrap();
-            let conv = conversations::get_required(&conn, &conversation_id)?;
-            let character = characters::get_required(&conn, &conv.character_id)?;
-            let s = settings::get(&conn)?;
-            let all = messages::list(&conn, &conversation_id)?;
+            let tx = conn.unchecked_transaction()?;
+            let conv = conversations::get_required(&tx, &conversation_id)?;
+            let character = characters::get_required(&tx, &conv.character_id)?;
+            let s = settings::get(&tx)?;
+            let all = messages::list(&tx, &conversation_id)?;
             let last_user = all.iter().rev().find(|m| m.role == "user").cloned();
             match last_user {
                 Some(u) => {
                     // 截断该条及其后的所有消息，再以相同内容重新发送
-                    messages::delete_from_seq(&conn, &conversation_id, u.seq)?;
-                    messages::insert(&conn, &conversation_id, "user", &u.content)?;
+                    messages::delete_from_seq(&tx, &conversation_id, u.seq)?;
+                    messages::insert(&tx, &conversation_id, "user", &u.content)?;
                 }
                 None => {
                     return Err(crate::error::AppError::other("没有可重新发送的用户消息"));
                 }
             }
-            let history = messages::list(&conn, &conversation_id)?;
-            let lore = lore_for(&conn, &conv.character_id, &history)?;
+            let history = messages::list(&tx, &conversation_id)?;
+            let lore = lore_for(&tx, &conv.character_id, &history)?;
+            tx.commit()?;
             Ok((character, s, history, lore))
         })();
         let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         *slot = Some(ActiveChat {
             request_id: request_id.clone(),
-            cancel_tx,
+            conversation_id: conversation_id.clone(),
+            cancel_tx: Mutex::new(Some(cancel_tx)),
         });
         (character, s, history, lore, cancel_rx)
     };
@@ -240,11 +271,20 @@ pub async fn resend_last(
         body,
     };
 
-    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    spawn_stream_task(
+        state.inner(),
+        app,
+        request_id.clone(),
+        cancel_rx,
+        cfg,
+        conversation_id,
+        None,
+    );
     Ok(request_id)
 }
 
 /// 组流式任务配置并 spawn（send_message / regenerate / resend 共用）
+#[allow(clippy::too_many_arguments)]
 fn spawn_stream_task(
     state: &AppState,
     app: AppHandle,
@@ -252,6 +292,7 @@ fn spawn_stream_task(
     cancel_rx: oneshot::Receiver<()>,
     cfg: StreamConfig,
     conversation_id: String,
+    pending_delete_id: Option<String>,
 ) {
     let db = state.db.clone();
     let chat_slot = state.chat.clone();
@@ -263,21 +304,35 @@ fn spawn_stream_task(
         cancel_rx,
         cfg,
         conversation_id,
+        pending_delete_id,
     ));
 }
 
+/// 取消：只发送取消信号，不清槽位。
+/// 槽位一律由流式任务退出时清理，避免旧任务与新消息的 seq 竞态。
 #[tauri::command]
 pub fn cancel_chat(state: State<AppState>, request_id: String) -> Result<(), String> {
-    let mut slot = state.chat.lock().unwrap();
-    if let Some(active) = slot.as_ref() {
-        if active.request_id == request_id {
-            // 取出槽位发送取消；槽位的清理由流任务退出时兜底（幂等）
-            if let Some(active) = slot.take() {
-                let _ = active.cancel_tx.send(());
-            }
-        }
+    let slot = state.chat.lock().unwrap();
+    let active = slot
+        .as_ref()
+        .ok_or_else(|| "没有正在进行的生成".to_string())?;
+    if active.request_id != request_id {
+        return Err("没有正在进行的生成".to_string());
+    }
+    if let Some(tx) = active.cancel_tx.lock().unwrap().take() {
+        let _ = tx.send(());
     }
     Ok(())
+}
+
+/// 当前活跃生成所属的对话（删除/清理命令用它拒绝危险操作）
+pub(crate) fn active_conversation_id(state: &AppState) -> Option<String> {
+    state
+        .chat
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|a| a.conversation_id.clone())
 }
 
 async fn stream_task(
@@ -288,6 +343,7 @@ async fn stream_task(
     cancel_rx: oneshot::Receiver<()>,
     cfg: StreamConfig,
     conversation_id: String,
+    pending_delete_id: Option<String>,
 ) {
     // 流式请求：逐 delta 转发给前端
     let result = stream_chat(&cfg, Some(cancel_rx), |delta| {
@@ -304,6 +360,10 @@ async fn stream_task(
     // 收尾：保存回复（正常完成时空回复也保存，保证消息流完整）
     let (saved_id, partial_saved) = if result.error.is_none() && !result.cancelled {
         let conn = db.lock().unwrap();
+        // 重新生成：仅在新回复成功保存后删除旧回复（失败则保留）
+        if let Some(old_id) = pending_delete_id.as_deref() {
+            let _ = messages::delete_by_id(&conn, old_id);
+        }
         let id = messages::insert(&conn, &conversation_id, "assistant", &result.text)
             .ok()
             .map(|m| m.id);
