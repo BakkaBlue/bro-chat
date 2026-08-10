@@ -77,12 +77,11 @@ export default function ConversationPanel() {
     onSelectRange: (indices) => setSelection(indices.map((i) => items[i].id)),
   });
 
-  // 拖拽排序
-  const { dragIndex, itemProps } = useDragSort(
-    items,
-    (arr) => reorderLocally(arr.map((x) => x.id)),
-    () => commitReorder(),
-  );
+  // 拖拽排序（插入指示线方案）
+  const { dragIndex, overIndex, itemProps } = useDragSort(items, (arr) => {
+    reorderLocally(arr.map((x) => x.id));
+    commitReorder();
+  });
 
   const handleItemClick = (id: string) => {
     if (multiSelect) {
@@ -209,14 +208,18 @@ export default function ConversationPanel() {
           items.map((c, i) => {
             const multiSel = selectedIds.includes(c.id);
             const dragging = dragIndex === i;
+            const lineAbove = overIndex === i;
+            const lineBelow = overIndex === items.length && i === items.length - 1;
             return (
               <div
                 key={c.id}
                 data-sortable
                 {...itemProps(i)}
-                className={`cursor-grab transition-all active:cursor-grabbing ${
-                  dragging ? "opacity-40" : ""
-                } ${multiSel ? "rounded-lg ring-2 ring-indigo-400/70" : ""}`}
+                className={`border-t-2 transition-colors ${
+                  lineAbove || lineBelow ? "border-indigo-400" : "border-transparent"
+                } ${dragging ? "opacity-40" : ""} ${
+                  multiSel ? "rounded-lg ring-2 ring-indigo-400/70" : ""
+                }`}
               >
                 <ConversationListItem
                   summary={c}

@@ -1,10 +1,11 @@
-import { BookOpenText, Download, Pencil, Trash2 } from "lucide-react";
+import { BookOpenText, Download, GripVertical, Pencil, Trash2 } from "lucide-react";
 import type { CharacterSummary } from "../types";
 import { useCharacterStore } from "../stores/characterStore";
 import { useUiStore } from "../stores/uiStore";
 import { useSettingsStore } from "../stores/settingsStore";
 
-// 角色列表项：头像 + 名称 + 标签；悬停显示导出/编辑/删除
+// 角色列表项：拖拽手柄 + 头像 + 名称 + 标签；操作按钮常驻占位（hover 仅切换可见性，
+// 尺寸固定不跳动）。点击选中。
 export default function CharacterListItem({
   summary,
   selected,
@@ -17,31 +18,40 @@ export default function CharacterListItem({
   const exportToFile = useCharacterStore((s) => s.exportToFile);
   const remove = useCharacterStore((s) => s.remove);
   const openEditor = useUiStore((s) => s.openEditor);
-  const askConfirm = useUiStore((s) => s.askConfirm);
   const openWorldbook = useUiStore((s) => s.openWorldbook);
+  const askConfirm = useUiStore((s) => s.askConfirm);
   const showVersion = useSettingsStore((s) => s.settings?.char_show_version ?? false);
 
   return (
     <div
       onClick={onSelect}
-      className={`group mb-1 flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs ${
+      className={`group relative flex cursor-pointer items-center gap-1.5 rounded-lg px-1 py-1.5 text-xs transition-colors ${
         selected
           ? "bg-neutral-200 dark:bg-neutral-700"
           : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
       }`}
     >
+      {/* 拖拽手柄：提示可拖拽排序 */}
+      <span
+        className="drag-handle shrink-0 cursor-grab text-neutral-300 transition-colors group-hover:text-neutral-500 active:cursor-grabbing dark:text-neutral-600 dark:group-hover:text-neutral-400"
+        title="拖拽排序"
+      >
+        <GripVertical className="size-3.5" />
+      </span>
+
       <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-200 text-[10px] text-neutral-500 dark:bg-neutral-700">
         {summary.avatar ? (
           <img
             src={summary.avatar}
             alt={summary.name}
-            className="size-full object-cover"
+            className="avatar-img size-full object-cover"
             onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
           />
         ) : (
           summary.name.charAt(0)
         )}
       </div>
+
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate font-medium">{summary.name}</span>
@@ -60,7 +70,9 @@ export default function CharacterListItem({
           <div className="text-[10px] text-neutral-400">v{summary.character_version}</div>
         )}
       </div>
-      <div className="hidden shrink-0 gap-0.5 group-hover:flex">
+
+      {/* 操作按钮：常驻占位，hover 切换可见性（不改变布局尺寸） */}
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           title="世界书"
           onClick={(e) => {
