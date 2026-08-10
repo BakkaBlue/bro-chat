@@ -21,6 +21,8 @@ export const deleteCharacter = (id: string) => invoke<void>("delete_character", 
 export const importCard = (path: string) => invoke<Character>("import_card", { path });
 export const exportCard = (id: string, path: string) =>
   invoke<void>("export_card", { id, path });
+export const reorderCharacters = (ids: string[]) =>
+  invoke<void>("reorder_characters", { ids });
 
 // 对话
 export const listConversations = (characterId: string) =>
@@ -31,6 +33,8 @@ export const renameConversation = (id: string, title: string) =>
   invoke<void>("rename_conversation", { id, title });
 export const deleteConversation = (id: string) =>
   invoke<void>("delete_conversation", { id });
+export const reorderConversations = (characterId: string, ids: string[]) =>
+  invoke<void>("reorder_conversations", { characterId, ids });
 export const getMessages = (conversationId: string) =>
   invoke<Message[]>("get_messages", { conversationId });
 export const updateMessage = (id: string, content: string) =>

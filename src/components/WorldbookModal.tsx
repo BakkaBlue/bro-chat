@@ -14,11 +14,11 @@ export default function WorldbookModal() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-6"
+      className="overlay-anim fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-6"
       onClick={closeWorldbook}
     >
       <div
-        className="glass-panel max-h-full w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
+        className="modal-anim max-h-full w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">

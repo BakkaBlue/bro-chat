@@ -74,7 +74,6 @@ export interface Settings {
   ui_show_timestamps: boolean;
   ui_avatar_hover_zoom: boolean;
   ui_reduce_motion: boolean;
-  ui_glass_blur: boolean;
   ui_text_shadow: boolean;
   ui_message_animation: boolean;
   ui_auto_expand_actions: boolean;

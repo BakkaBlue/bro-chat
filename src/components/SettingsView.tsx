@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Settings } from "../types";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useUiStore } from "../stores/uiStore";
@@ -74,47 +74,15 @@ const TABS: [Tab, string][] = [
   ["auto", "自动化"],
 ];
 
-/** 背景图压缩：宽度超过 maxW 时缩到 maxW 内并转 JPEG，避免 localStorage 配额超限 */
-function compressImage(dataUrl: string, maxW: number): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const scale = Math.min(1, maxW / img.width);
-        if (scale >= 1) {
-          resolve(dataUrl);
-          return;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(dataUrl);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      } catch {
-        resolve(dataUrl);
-      }
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
 
 // 设置整窗：六分类（参考酒馆设置结构，只保留本应用真实生效的项）
 export default function SettingsView() {
   const { settings, load, save } = useSettingsStore();
   const setView = useUiStore((s) => s.setView);
   const showToast = useUiStore((s) => s.showToast);
-  const bgImage = useSettingsStore((s) => s.bgImage);
-  const setBgImage = useSettingsStore((s) => s.setBgImage);
   const [form, setForm] = useState<Settings | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [tab, setTab] = useState<Tab>("model");
-  const bgInputRef = useRef<HTMLInputElement>(null);
 
   // 模型列表
   const [models, setModels] = useState<string[] | null>(null);
@@ -258,53 +226,6 @@ export default function SettingsView() {
             </h2>
             <div className="mb-4 flex flex-col gap-3">
               <div>
-                <label className={labelCls}>背景图片（配合「背景模糊」使用）</label>
-                <div className="flex items-center gap-2">
-                  {bgImage && (
-                    <img
-                      src={bgImage}
-                      alt="背景预览"
-                      className="h-10 w-16 rounded-md border border-neutral-200 object-cover dark:border-neutral-600"
-                    />
-                  )}
-                  <button
-                    onClick={() => bgInputRef.current?.click()}
-                    className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
-                  >
-                    选择图片…
-                  </button>
-                  {bgImage && (
-                    <button
-                      onClick={() => setBgImage(null)}
-                      className="text-xs text-neutral-400 hover:text-rose-500"
-                    >
-                      移除
-                    </button>
-                  )}
-                </div>
-                <input
-                  ref={bgInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const dataUrl = reader.result as string;
-                        // 大图先压缩再存（localStorage 有 ~5MB 配额）
-                        compressImage(dataUrl, 1600)
-                          .then(setBgImage)
-                          .catch(() => setBgImage(dataUrl));
-                      };
-                      reader.readAsDataURL(f);
-                    }
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-              <div>
                 <label className={labelCls}>主题名称</label>
                 <SegBtn
                   options={[
@@ -357,12 +278,6 @@ export default function SettingsView() {
               UI 效果开关
             </h2>
             <div className="flex flex-col gap-1.5">
-              <Toggle
-                label="背景高斯模糊"
-                hint="面板毛玻璃，透出模糊的背景层"
-                checked={form.ui_glass_blur}
-                onChange={(v) => set("ui_glass_blur", v)}
-              />
               <Toggle
                 label="文本阴影"
                 hint="消息文字带轻微阴影"

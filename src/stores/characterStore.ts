@@ -9,6 +9,8 @@ interface CharacterState {
   selectedId: string | null;
   search: string;
   loading: boolean;
+  /** 多选选中的角色 id 集合（框选/多选模式） */
+  selectedIds: string[];
 
   load: () => Promise<void>;
   select: (id: string | null) => void;
@@ -20,6 +22,19 @@ interface CharacterState {
   remove: (id: string) => Promise<void>;
   importFromFile: () => Promise<void>;
   exportToFile: (id: string) => Promise<void>;
+
+  // 多选
+  toggleSelect: (id: string) => void;
+  clearSelection: () => void;
+  setSelection: (ids: string[]) => void;
+  /** 批量删除选中角色 */
+  batchRemove: (ids: string[]) => Promise<void>;
+
+  // 拖拽排序
+  /** 本地按 id 顺序重排（拖拽中实时） */
+  reorderLocally: (ids: string[]) => void;
+  /** 持久化当前顺序 */
+  commitReorder: () => Promise<void>;
 }
 
 export const useCharacterStore = create<CharacterState>((set, get) => ({
@@ -27,6 +42,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   selectedId: null,
   search: "",
   loading: false,
+  selectedIds: [],
 
   load: async () => {
     set({ loading: true });
@@ -107,6 +123,51 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
       useUiStore.getState().showToast(`已导出「${c.name}」`);
     } catch (e) {
       useUiStore.getState().showToast(`导出失败: ${e}`);
+    }
+  },
+
+  // ---- 多选 ----
+
+  toggleSelect: (id) => {
+    set((s) => ({
+      selectedIds: s.selectedIds.includes(id)
+        ? s.selectedIds.filter((x) => x !== id)
+        : [...s.selectedIds, id],
+    }));
+  },
+
+  clearSelection: () => set({ selectedIds: [] }),
+
+  setSelection: (ids) => set({ selectedIds: ids }),
+
+  batchRemove: async (ids) => {
+    try {
+      for (const id of ids) {
+        await api.deleteCharacter(id);
+      }
+      const { selectedId } = get();
+      if (selectedId && ids.includes(selectedId)) set({ selectedId: null });
+      set({ selectedIds: [] });
+      await get().load();
+    } catch (e) {
+      useUiStore.getState().showToast(`删除失败: ${e}`);
+    }
+  },
+
+  // ---- 拖拽排序 ----
+
+  reorderLocally: (ids) => {
+    const byId = new Map(get().items.map((c) => [c.id, c]));
+    const reordered = ids.map((id) => byId.get(id)).filter((x): x is CharacterSummary => !!x);
+    set({ items: reordered });
+  },
+
+  commitReorder: async () => {
+    try {
+      await api.reorderCharacters(get().items.map((c) => c.id));
+    } catch (e) {
+      useUiStore.getState().showToast(`保存排序失败: ${e}`);
+      await get().load(); // 回滚
     }
   },
 }));

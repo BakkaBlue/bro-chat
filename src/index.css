@@ -27,42 +27,6 @@ body {
 
 /* ---- UI 效果（由设置项驱动，挂载在应用根元素上） ---- */
 
-/* 背景层：渐变或用户图片，fixed 定位覆盖视口，位于所有面板之下 */
-.bg-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(165deg, #f1f3f7 0%, #e8ecf3 50%, #eee9f3 100%);
-  background-size: cover;
-  background-position: center;
-  transition: filter 0.3s ease;
-}
-.dark .bg-layer {
-  background: linear-gradient(165deg, #16181c 0%, #1b1f26 50%, #221f2b 100%);
-}
-
-/* 背景高斯模糊：模糊背景层本身 + 面板半透明。
- * 不用 backdrop-filter——它在 WebView2 上存在合成渲染 bug（大块白屏覆盖）。 */
-.glass-blur .bg-layer {
-  filter: blur(24px) saturate(1.15);
-  transform: scale(1.08);
-}
-.glass-blur aside,
-.glass-blur main {
-  background: rgb(250 250 250 / 0.78) !important;
-}
-.dark.glass-blur aside,
-.dark.glass-blur main {
-  background: rgb(28 28 30 / 0.78) !important;
-}
-.glass-blur .glass-panel {
-  background: rgb(255 255 255 / 0.9) !important;
-}
-.dark.glass-blur .glass-panel {
-  background: rgb(40 40 42 / 0.9) !important;
-}
-
 /* 减少动态效果：关闭全部动画与过渡 */
 .reduce-motion *,
 .reduce-motion *::before,
@@ -108,4 +72,57 @@ body {
 }
 .avatar-hover-zoom .avatar-wrap:hover img.avatar-img {
   transform: scale(1.15);
+}
+
+/* ---- 通用动效（不生硬） ---- */
+
+/* 弹窗/菜单淡入上浮 */
+.modal-anim {
+  animation: modal-in 0.18s ease-out;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 遮罩淡入 */
+.overlay-anim {
+  animation: overlay-in 0.15s ease-out;
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 多选工具栏滑入 */
+.selection-bar-anim {
+  animation: selection-in 0.15s ease-out;
+}
+@keyframes selection-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 列表项通用过渡（hover/选中不生硬） */
+.list-item {
+  transition:
+    background-color 0.12s ease,
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
 }

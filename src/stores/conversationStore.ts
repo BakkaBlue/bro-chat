@@ -9,6 +9,8 @@ interface ConversationState {
   items: ConversationSummary[];
   selectedId: string | null;
   loading: boolean;
+  /** 多选选中的对话 id 集合 */
+  selectedIds: string[];
 
   loadForCharacter: (characterId: string | null) => Promise<void>;
   refresh: () => Promise<void>;
@@ -17,6 +19,17 @@ interface ConversationState {
   create: (characterId: string, greetingIndex?: number) => Promise<ConversationSummary | null>;
   remove: (id: string) => Promise<void>;
   rename: (id: string, title: string) => Promise<void>;
+
+  // 多选
+  toggleSelect: (id: string) => void;
+  clearSelection: () => void;
+  setSelection: (ids: string[]) => void;
+  /** 批量删除选中对话 */
+  batchRemove: (ids: string[]) => Promise<void>;
+
+  // 拖拽排序
+  reorderLocally: (ids: string[]) => void;
+  commitReorder: () => Promise<void>;
 }
 
 // 开场白轮流游标（会话级记忆，显式选择会推进游标）
@@ -26,10 +39,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   items: [],
   selectedId: null,
   loading: false,
+  selectedIds: [],
 
   loadForCharacter: async (characterId) => {
     if (!characterId) {
-      set({ items: [], selectedId: null });
+      set({ items: [], selectedId: null, selectedIds: [] });
       useChatStore.getState().reset();
       return;
     }
@@ -124,6 +138,59 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       });
     } catch (e) {
       useUiStore.getState().showToast(`重命名失败: ${e}`);
+    }
+  },
+
+  // ---- 多选 ----
+
+  toggleSelect: (id) => {
+    set((s) => ({
+      selectedIds: s.selectedIds.includes(id)
+        ? s.selectedIds.filter((x) => x !== id)
+        : [...s.selectedIds, id],
+    }));
+  },
+
+  clearSelection: () => set({ selectedIds: [] }),
+
+  setSelection: (ids) => set({ selectedIds: ids }),
+
+  batchRemove: async (ids) => {
+    try {
+      for (const id of ids) {
+        await api.deleteConversation(id);
+      }
+      const { selectedId } = get();
+      if (selectedId && ids.includes(selectedId)) {
+        set({ selectedId: null });
+        useChatStore.getState().reset();
+      }
+      set({ selectedIds: [] });
+      const charId = useCharacterStore.getState().selectedId;
+      if (charId) await get().loadForCharacter(charId);
+    } catch (e) {
+      useUiStore.getState().showToast(`删除失败: ${e}`);
+    }
+  },
+
+  // ---- 拖拽排序 ----
+
+  reorderLocally: (ids) => {
+    const byId = new Map(get().items.map((c) => [c.id, c]));
+    const reordered = ids
+      .map((id) => byId.get(id))
+      .filter((x): x is ConversationSummary => !!x);
+    set({ items: reordered });
+  },
+
+  commitReorder: async () => {
+    const charId = useCharacterStore.getState().selectedId;
+    if (!charId) return;
+    try {
+      await api.reorderConversations(charId, get().items.map((c) => c.id));
+    } catch (e) {
+      useUiStore.getState().showToast(`保存排序失败: ${e}`);
+      await get().loadForCharacter(charId); // 回滚
     }
   },
 }));

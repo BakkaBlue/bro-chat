@@ -22,7 +22,6 @@ export default function App() {
   const loadCharacters = useCharacterStore((s) => s.load);
   const loadSettings = useSettingsStore((s) => s.load);
   const settings = useSettingsStore((s) => s.settings);
-  const bgImage = useSettingsStore((s) => s.bgImage);
 
   // 启动：加载角色列表与设置
   useEffect(() => {
@@ -78,7 +77,6 @@ export default function App() {
     const cls = document.getElementById("app-root");
     if (!cls) return;
     const EFFECTS = [
-      "glass-blur",
       "text-shadow",
       "reduce-motion",
       "avatar-circle",
@@ -88,7 +86,6 @@ export default function App() {
     ];
     const s = settings;
     const active = [
-      s?.ui_glass_blur ? "glass-blur" : "",
       s?.ui_text_shadow ? "text-shadow" : "",
       s?.ui_reduce_motion ? "reduce-motion" : "",
       s?.ui_avatar_style === "circle" ? "avatar-circle" : "",
@@ -99,7 +96,6 @@ export default function App() {
     EFFECTS.forEach((c) => cls.classList.remove(c));
     active.forEach((c) => cls.classList.add(c));
   }, [
-    settings?.ui_glass_blur,
     settings?.ui_text_shadow,
     settings?.ui_reduce_motion,
     settings?.ui_avatar_style,
@@ -141,11 +137,6 @@ export default function App() {
       id="app-root"
       className="relative flex h-full overflow-hidden bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
     >
-      {/* 背景层（fixed 覆盖视口，模糊开关打开时经半透明面板透出） */}
-      <div
-        className="bg-layer"
-        style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
-      />
       {children}
     </div>
   );

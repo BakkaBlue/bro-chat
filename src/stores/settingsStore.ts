@@ -6,19 +6,13 @@ import { useUiStore } from "./uiStore";
 interface SettingsState {
   settings: Settings | null;
   loading: boolean;
-  /** 背景图片（data URL，存 localStorage；配合背景高斯模糊使用） */
-  bgImage: string | null;
   load: () => Promise<void>;
   save: (s: Settings) => Promise<void>;
-  setBgImage: (v: string | null) => void;
 }
-
-const BG_KEY = "brochat.bgImage";
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   settings: null,
   loading: false,
-  bgImage: localStorage.getItem(BG_KEY),
 
   load: async () => {
     set({ loading: true });
@@ -40,20 +34,5 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     } catch (e) {
       useUiStore.getState().showToast(`保存设置失败: ${e}`);
     }
-  },
-
-  setBgImage: (v) => {
-    try {
-      if (v) {
-        localStorage.setItem(BG_KEY, v);
-      } else {
-        localStorage.removeItem(BG_KEY);
-      }
-    } catch (e) {
-      // localStorage 配额超限（大图 base64 膨胀）时给出提示而不是静默失败
-      useUiStore.getState().showToast(`背景图片保存失败（可能过大）: ${e}`);
-      return;
-    }
-    set({ bgImage: v });
   },
 }));

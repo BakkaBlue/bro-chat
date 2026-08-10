@@ -10,11 +10,11 @@ export default function ConfirmDialog() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="overlay-anim fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={dismissConfirm}
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
+        className="modal-anim w-full max-w-sm rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold">{confirm.title}</h3>

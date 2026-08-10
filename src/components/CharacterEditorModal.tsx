@@ -111,11 +111,11 @@ export default function CharacterEditorModal() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-6"
+      className="overlay-anim fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-6"
       onClick={closeEditor}
     >
       <div
-        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
+        className="modal-anim max-h-full w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-sm font-semibold">
