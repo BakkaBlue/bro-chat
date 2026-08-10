@@ -85,7 +85,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       useUiStore.getState().showToast("请先选择对话");
       return false;
     }
-    if (get().streaming || get().sending) {
+    // 仅本对话的流会锁住发送；其他对话的流由后端单飞兜底拒绝
+    const cur = get().streaming;
+    if ((cur && cur.conversationId === selectedId) || get().sending) {
       useUiStore.getState().showToast("已有生成中的回复");
       return false;
     }
@@ -136,7 +138,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   regenerate: async () => {
     const { selectedId } = useConversationStore.getState();
-    if (!selectedId || get().streaming || get().sending) return;
+    const cur = get().streaming;
+    if (!selectedId || (cur && cur.conversationId === selectedId) || get().sending) return;
     // 本地无消息时不发起请求（避免服务端流成为孤儿）
     if (!get().messages.some((m) => m.role === "assistant")) return;
     set({ sending: true });
@@ -170,7 +173,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   resend: async () => {
     const { selectedId } = useConversationStore.getState();
-    if (!selectedId || get().streaming || get().sending) return;
+    const cur = get().streaming;
+    if (!selectedId || (cur && cur.conversationId === selectedId) || get().sending) return;
     // 先本地校验再发请求（本地没有最后 user 消息就不动服务端）
     const messages = get().messages;
     let idx = -1;

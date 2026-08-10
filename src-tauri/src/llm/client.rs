@@ -130,6 +130,7 @@ pub fn build_body(settings: &Settings, messages: &[Msg]) -> serde_json::Value {
 pub async fn fetch_models(base_url: &str, api_key: &str) -> Result<Vec<String>, String> {
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(15))
+        .read_timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))?;
     let mut req = client.get(models_url(base_url));

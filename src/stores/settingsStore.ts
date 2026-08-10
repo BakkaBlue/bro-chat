@@ -43,10 +43,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
 
   setBgImage: (v) => {
-    if (v) {
-      localStorage.setItem(BG_KEY, v);
-    } else {
-      localStorage.removeItem(BG_KEY);
+    try {
+      if (v) {
+        localStorage.setItem(BG_KEY, v);
+      } else {
+        localStorage.removeItem(BG_KEY);
+      }
+    } catch (e) {
+      // localStorage 配额超限（大图 base64 膨胀）时给出提示而不是静默失败
+      useUiStore.getState().showToast(`背景图片保存失败（可能过大）: ${e}`);
+      return;
     }
     set({ bgImage: v });
   },

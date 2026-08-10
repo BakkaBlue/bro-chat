@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../stores/chatStore";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useConversationStore } from "../stores/conversationStore";
 
 // 输入区：Enter 发送（可设置模式）、Shift+Enter 换行；生成中变停止按钮。
 // 中文输入法组合（IME）期间的 Enter 不应触发发送。
+// 停止/发送守卫按"当前对话"判断，不被其他对话的流锁死。
 export default function ChatInput() {
   const [text, setText] = useState("");
   const send = useChatStore((s) => s.send);
@@ -11,9 +13,11 @@ export default function ChatInput() {
   const streaming = useChatStore((s) => s.streaming);
   const sending = useChatStore((s) => s.sending);
   const enterMode = useSettingsStore((s) => s.settings?.chat_enter_mode ?? "");
+  const convId = useConversationStore((s) => s.selectedId);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const canSend = text.trim().length > 0 && !streaming && !sending;
+  const streamingHere = streaming !== null && streaming.conversationId === convId;
+  const canSend = text.trim().length > 0 && !streamingHere && !sending;
   // newline 模式：Enter 换行、Ctrl+Enter 发送；其他模式：Enter 发送
   const enterSends = enterMode !== "newline";
 
@@ -52,7 +56,7 @@ export default function ChatInput() {
           }
           className="max-h-40 min-h-10 flex-1 resize-y rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[13px] outline-none placeholder:text-neutral-400 focus:border-neutral-400 dark:border-neutral-600 dark:bg-neutral-800"
         />
-        {streaming ? (
+        {streamingHere ? (
           <button
             onClick={stop}
             className="shrink-0 rounded-lg border border-rose-300 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/20"

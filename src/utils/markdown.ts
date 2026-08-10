@@ -26,10 +26,11 @@ export function estimateTokens(text: string): number {
   return cjk + Math.ceil(other / 4);
 }
 
-/** Markdown → 净化后的 HTML；blockExternal 时移除外部图片/媒体 */
+/** Markdown → 净化后的 HTML；blockExternal 时移除外部图片/媒体。
+ * DOMPurify 禁 style 属性（防 CSS 注入：fixed 遮罩/背景图追踪等）。 */
 export function renderMarkdown(text: string, blockExternal = false): string {
   const html = marked.parse(text, { async: false }) as string;
-  let clean = DOMPurify.sanitize(html);
+  let clean = DOMPurify.sanitize(html, { FORBID_ATTR: ["style"] });
   if (blockExternal) {
     const doc = new DOMParser().parseFromString(clean, "text/html");
     doc.querySelectorAll("img, audio, video, iframe").forEach((el) => {

@@ -69,7 +69,20 @@ pub fn get_by_character(conn: &Connection, character_id: &str) -> AppResult<Opti
 }
 
 /// 整书替换保存：更新书籍字段 + 重建条目。不存在则创建。
+/// 删除+插入在同一事务内，失败整体回滚（不留半套条目）。
 pub fn save(conn: &Connection, character_id: &str, input: &LorebookInput) -> AppResult<Lorebook> {
+    let tx = conn.unchecked_transaction()?;
+    save_inner(&tx, character_id, input)?;
+    tx.commit()?;
+    get_by_character(conn, character_id)?.ok_or_else(|| AppError::other("世界书保存后读取失败"))
+}
+
+/// 无事务版本，供调用方在更大事务内组合（如导入角色卡）。
+pub(crate) fn save_inner(
+    conn: &Connection,
+    character_id: &str,
+    input: &LorebookInput,
+) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
     let existing = get_by_character(conn, character_id)?;
 
@@ -141,8 +154,7 @@ pub fn save(conn: &Connection, character_id: &str, input: &LorebookInput) -> App
             ],
         )?;
     }
-
-    get_by_character(conn, character_id)?.ok_or_else(|| AppError::other("世界书保存后读取失败"))
+    Ok(())
 }
 
 pub fn delete_by_character(conn: &Connection, character_id: &str) -> AppResult<()> {

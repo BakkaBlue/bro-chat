@@ -34,6 +34,8 @@ pub async fn stream_chat(
 
     let client = match Client::builder()
         .connect_timeout(Duration::from_secs(15))
+        // 上游挂起（接受连接但不发数据）时 60s 超时，走 stream.next() 的 Err 分支
+        .read_timeout(Duration::from_secs(60))
         .build()
     {
         Ok(c) => c,

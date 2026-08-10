@@ -54,26 +54,33 @@ pub fn delete_character(state: State<AppState>, id: String) -> Result<(), String
 
 #[tauri::command]
 pub fn import_card(state: State<AppState>, path: String) -> Result<Character, String> {
+    // 文件读取在锁外进行（避免大 PNG 卡阻塞数据库操作）
+    let (data, avatar_bytes) =
+        cards::io::read_card(Path::new(&path)).map_err(|e| e.to_string())?;
+    let mut input = cards::spec::card_to_input(&data);
+    input.avatar = avatar_bytes.map(|b| avatar::encode(&b));
     with_db(&state, |conn| {
-        let (data, avatar_bytes) = cards::io::read_card(Path::new(&path))?;
-        let mut input = cards::spec::card_to_input(&data);
-        input.avatar = avatar_bytes.map(|b| avatar::encode(&b));
-        let character = characters::create(conn, &input)?;
-        // 卡片内嵌世界书 → 导入为角色世界书
+        // 角色创建 + 世界书保存同一事务，失败整体回滚（重试不产生重复角色）
+        let tx = conn.unchecked_transaction()?;
+        let character = characters::create(&tx, &input)?;
         if let Some(book) = data.character_book.as_ref() {
             if let Some(lore_input) = cards::spec::character_book_to_lore_input(book) {
-                lorebooks::save(conn, &character.id, &lore_input)?;
+                lorebooks::save_inner(&tx, &character.id, &lore_input)?;
             }
         }
+        tx.commit()?;
         Ok(character)
     })
 }
 
 #[tauri::command]
 pub fn export_card(state: State<AppState>, id: String, path: String) -> Result<(), String> {
-    with_db(&state, |conn| {
+    // 锁内只读数据，写文件在锁外
+    let (c, lorebook) = with_db(&state, |conn| {
         let c = characters::get_required(conn, &id)?;
         let lorebook = lorebooks::get_by_character(conn, &id)?;
-        cards::io::write_card(Path::new(&path), &c, lorebook.as_ref())
-    })
+        Ok((c, lorebook))
+    })?;
+    cards::io::write_card(Path::new(&path), &c, lorebook.as_ref())
+        .map_err(|e| e.to_string())
 }

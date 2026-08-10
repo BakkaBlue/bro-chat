@@ -15,6 +15,12 @@ export default function ConversationPanel() {
   const [greetings, setGreetings] = useState<string[] | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // 角色切换时重置开场白菜单（避免显示上一个角色的开场白）
+  useEffect(() => {
+    setGreetings(null);
+    setMenuOpen(false);
+  }, [selectedCharId]);
+
   // 点击菜单外关闭
   useEffect(() => {
     if (!menuOpen) return;

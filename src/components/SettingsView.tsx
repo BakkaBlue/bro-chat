@@ -74,6 +74,36 @@ const TABS: [Tab, string][] = [
   ["auto", "自动化"],
 ];
 
+/** 背景图压缩：宽度超过 maxW 时缩到 maxW 内并转 JPEG，避免 localStorage 配额超限 */
+function compressImage(dataUrl: string, maxW: number): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxW / img.width);
+        if (scale >= 1) {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 // 设置整窗：六分类（参考酒馆设置结构，只保留本应用真实生效的项）
 export default function SettingsView() {
   const { settings, load, save } = useSettingsStore();
@@ -261,7 +291,13 @@ export default function SettingsView() {
                     const f = e.target.files?.[0];
                     if (f) {
                       const reader = new FileReader();
-                      reader.onload = () => setBgImage(reader.result as string);
+                      reader.onload = () => {
+                        const dataUrl = reader.result as string;
+                        // 大图先压缩再存（localStorage 有 ~5MB 配额）
+                        compressImage(dataUrl, 1600)
+                          .then(setBgImage)
+                          .catch(() => setBgImage(dataUrl));
+                      };
                       reader.readAsDataURL(f);
                     }
                     e.target.value = "";

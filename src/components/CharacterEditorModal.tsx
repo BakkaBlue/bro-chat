@@ -36,8 +36,12 @@ export default function CharacterEditorModal() {
 
   useEffect(() => {
     if (editorOpen === null) return;
-    if (editingId) {
-      fetchOne(editingId).then((c) => {
+    const targetId = editingId;
+    if (targetId) {
+      fetchOne(targetId).then((c) => {
+        // 丢弃过期响应：等待期间弹窗可能已关闭或切换到别的角色
+        const cur = useUiStore.getState().editorOpen;
+        if (!cur || cur === "create" || cur.id !== targetId) return;
         setForm({
           name: c.name,
           description: c.description,
