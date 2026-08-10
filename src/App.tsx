@@ -108,7 +108,7 @@ export default function App() {
     settings?.ui_avatar_hover_zoom,
   ]);
 
-  // 自动化：启动后自动加载上次对话
+  // 自动化：启动后自动加载上次对话（等角色列表就绪后执行）
   const charCount = useCharacterStore((s) => s.items.length);
   useEffect(() => {
     if (!settings?.chat_auto_load_last) return;
@@ -119,15 +119,19 @@ export default function App() {
     const { items } = useCharacterStore.getState();
     if (!charId || !convId || !items.some((c) => c.id === charId)) return;
     useCharacterStore.getState().select(charId);
+    // 对话列表加载完成后选中（轮询，最多等 1s）；用户已手动选择则放弃
+    const timers: ReturnType<typeof setTimeout>[] = [];
     const trySelect = (attempt: number) => {
+      if (useConversationStore.getState().selectedId !== null) return; // 用户已选过
       const convs = useConversationStore.getState().items;
       if (convs.some((c) => c.id === convId)) {
         useConversationStore.getState().select(convId);
       } else if (attempt < 10) {
-        setTimeout(() => trySelect(attempt + 1), 100);
+        timers.push(setTimeout(() => trySelect(attempt + 1), 100));
       }
     };
-    setTimeout(() => trySelect(0), 50);
+    timers.push(setTimeout(() => trySelect(0), 50));
+    return () => timers.forEach(clearTimeout);
   }, [settings?.chat_auto_load_last, charCount]);
 
   const shell = (children: React.ReactNode) => (

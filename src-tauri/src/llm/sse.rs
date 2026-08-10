@@ -1,6 +1,9 @@
 //! 手写 SSE 解析器：只认 `data:` 行，空行触发事件，容忍跨 chunk 断行、
 //! CRLF、多行 JSON、注释行（`: keepalive`）。流结束时用 finish() 冲刷。
 
+/// 单条事件负载上限：超过即丢弃缓冲（防故障/恶意上游撑爆内存）
+const MAX_EVENT_BYTES: usize = 256 * 1024;
+
 pub struct SseParser {
     buf: Vec<u8>,
     data_lines: Vec<String>,
@@ -22,6 +25,14 @@ impl SseParser {
 
     /// 推送字节，返回本次解析出的完整事件负载（每条是 data 行拼接的结果）
     pub fn push(&mut self, bytes: &[u8]) -> Vec<String> {
+        // 单事件超限（含已累积的 data 行）：丢弃缓冲，防止内存无限增长
+        let pending: usize = self.buf.len()
+            + self.data_lines.iter().map(|s| s.len() + 2).sum::<usize>();
+        if pending + bytes.len() > MAX_EVENT_BYTES {
+            self.buf.clear();
+            self.data_lines.clear();
+            return Vec::new();
+        }
         self.buf.extend_from_slice(bytes);
         let mut events = Vec::new();
         while let Some(nl) = self.buf.iter().position(|&b| b == b'\n') {

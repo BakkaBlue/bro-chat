@@ -61,10 +61,14 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   },
 
   remove: async (id) => {
-    await api.deleteCharacter(id);
-    const { selectedId } = get();
-    if (selectedId === id) set({ selectedId: null });
-    await get().load();
+    try {
+      await api.deleteCharacter(id);
+      const { selectedId } = get();
+      if (selectedId === id) set({ selectedId: null });
+      await get().load();
+    } catch (e) {
+      useUiStore.getState().showToast(`删除角色失败: ${e}`);
+    }
   },
 
   importFromFile: async () => {

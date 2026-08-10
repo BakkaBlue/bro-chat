@@ -63,11 +63,15 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     if (conv) {
       localStorage.setItem("brochat.lastConversation", `${conv.character_id}|${id}`);
     }
+    // 回复计时器按对话归属，切换后清空
+    useChatStore.setState({ lastReplyMs: null });
     useChatStore.getState().load(id);
   },
 
   create: async (characterId, greetingIndex) => {
     try {
+      // 记录发起时选中的角色；等待期间用户手动切换则不再抢回选中
+      const charAtStart = useCharacterStore.getState().selectedId;
       let index = greetingIndex;
       if (index === undefined) {
         // 自动轮流：取角色开场白数，游标 +1
@@ -84,6 +88,9 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         }
       }
       const conv = await api.createConversation(characterId, index);
+      if (useCharacterStore.getState().selectedId !== charAtStart) {
+        return conv; // 用户已切走，不抢回
+      }
       await get().loadForCharacter(characterId);
       set({ selectedId: conv.id });
       useChatStore.getState().load(conv.id);
