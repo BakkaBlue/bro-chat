@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RotateCw, Trash2 } from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
 import { useConversationStore } from "../stores/conversationStore";
 import { useCharacterStore } from "../stores/characterStore";
@@ -18,6 +19,9 @@ export default function ChatPane() {
   );
   const charName = useCharacterStore(
     (s) => s.items.find((c) => c.id === s.selectedId)?.name,
+  );
+  const charAvatar = useCharacterStore(
+    (s) => s.items.find((c) => c.id === s.selectedId)?.avatar ?? null,
   );
   const model = useSettingsStore((s) => s.settings?.model);
   const settings = useSettingsStore((s) => s.settings);
@@ -109,17 +113,17 @@ export default function ChatPane() {
           <button
             onClick={() => load(convId)}
             title="重新加载聊天"
-            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+            className="rounded-lg border border-neutral-200 p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:border-neutral-600 dark:hover:bg-neutral-700"
           >
-            ↻
+            <RotateCw className="size-3.5" />
           </button>
           <button
             onClick={clearChat}
             disabled={streamingActive}
             title={streamingActive ? "生成中不能清理" : "清理当前对话"}
-            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] text-neutral-400 hover:bg-rose-50 hover:text-rose-500 disabled:opacity-40 dark:border-neutral-600 dark:hover:bg-rose-900/20"
+            className="rounded-lg border border-neutral-200 p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-500 disabled:opacity-40 dark:border-neutral-600 dark:hover:bg-rose-900/20"
           >
-            🗑
+            <Trash2 className="size-3.5" />
           </button>
         </div>
       </header>
@@ -127,7 +131,7 @@ export default function ChatPane() {
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
       >
         {loading && visibleMessages.length === 0 ? (
           <div className="py-8 text-center text-xs text-neutral-400">加载中…</div>
@@ -136,17 +140,24 @@ export default function ChatPane() {
             发送第一条消息开始对话
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {visibleMessages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                canRegenerate={m.role === "assistant" && m.id === lastAssistantId}
-                onRegenerate={regenerate}
-                canResend={m.role === "user" && m.id === lastUserId}
-                onResend={resend}
-              />
-            ))}
+          <div className="flex flex-col">
+            {visibleMessages.map((m, i) => {
+              const grouped = i > 0 && visibleMessages[i - 1].role === m.role;
+              return (
+                <div key={m.id} className={grouped ? "mt-1.5" : "mt-4 first:mt-0"}>
+                  <MessageBubble
+                    message={m}
+                    charName={charName}
+                    avatar={charAvatar}
+                    grouped={grouped}
+                    canRegenerate={m.role === "assistant" && m.id === lastAssistantId}
+                    onRegenerate={regenerate}
+                    canResend={m.role === "user" && m.id === lastUserId}
+                    onResend={resend}
+                  />
+                </div>
+              );
+            })}
             {streamingActive && (
               <MessageBubble
                 message={{

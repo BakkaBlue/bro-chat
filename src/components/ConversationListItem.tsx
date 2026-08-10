@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { ConversationSummary } from "../types";
 import { useConversationStore } from "../stores/conversationStore";
 import { useUiStore } from "../stores/uiStore";
@@ -65,9 +66,9 @@ export default function ConversationListItem({
                 setDraft(summary.title);
                 setEditing(true);
               }}
-              className="rounded px-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
+              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
             >
-              ✎
+              <Pencil className="size-3" />
             </button>
             <button
               title="删除"
@@ -79,9 +80,9 @@ export default function ConversationListItem({
                   () => remove(summary.id),
                 );
               }}
-              className="rounded px-1 text-neutral-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40"
+              className="rounded-md p-1 text-neutral-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40"
             >
-              ✕
+              <Trash2 className="size-3" />
             </button>
           </span>
         </div>

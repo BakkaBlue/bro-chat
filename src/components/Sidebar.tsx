@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { Settings, Upload, UserPlus } from "lucide-react";
 import { useCharacterStore } from "../stores/characterStore";
 import { useUiStore } from "../stores/uiStore";
 import CharacterListItem from "./CharacterListItem";
@@ -58,22 +59,24 @@ export default function Sidebar() {
       <footer className="flex gap-1.5 border-t border-neutral-200 p-2 dark:border-neutral-700">
         <button
           onClick={importFromFile}
-          className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-700"
         >
+          <Upload className="size-3.5" />
           导入
         </button>
         <button
           onClick={() => openEditor("create")}
-          className="flex-1 rounded-md bg-neutral-800 px-2 py-1.5 text-xs text-white hover:bg-neutral-700 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
+          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-neutral-800 px-2 py-1.5 text-xs text-white hover:bg-neutral-700 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
         >
-          新建角色
+          <UserPlus className="size-3.5" />
+          新建
         </button>
         <button
           onClick={() => setView("settings")}
           title="设置"
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          className="flex items-center justify-center rounded-lg border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-700"
         >
-          设置
+          <Settings className="size-3.5" />
         </button>
       </footer>
     </aside>

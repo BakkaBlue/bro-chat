@@ -1,3 +1,4 @@
+import { BookOpenText, Download, Pencil, Trash2 } from "lucide-react";
 import type { CharacterSummary } from "../types";
 import { useCharacterStore } from "../stores/characterStore";
 import { useUiStore } from "../stores/uiStore";
@@ -66,9 +67,9 @@ export default function CharacterListItem({
             e.stopPropagation();
             openWorldbook(summary.id);
           }}
-          className="rounded px-1 py-0.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
+          className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
         >
-          📖
+          <BookOpenText className="size-3.5" />
         </button>
         <button
           title="导出卡片"
@@ -76,9 +77,9 @@ export default function CharacterListItem({
             e.stopPropagation();
             exportToFile(summary.id);
           }}
-          className="rounded px-1 py-0.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
+          className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
         >
-          ⤓
+          <Download className="size-3.5" />
         </button>
         <button
           title="编辑"
@@ -86,9 +87,9 @@ export default function CharacterListItem({
             e.stopPropagation();
             openEditor({ id: summary.id });
           }}
-          className="rounded px-1 py-0.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
+          className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
         >
-          ✎
+          <Pencil className="size-3.5" />
         </button>
         <button
           title="删除"
@@ -100,9 +101,9 @@ export default function CharacterListItem({
               () => remove(summary.id),
             );
           }}
-          className="rounded px-1 py-0.5 text-neutral-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40"
+          className="rounded-md p-1 text-neutral-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40"
         >
-          ✕
+          <Trash2 className="size-3.5" />
         </button>
       </div>
     </div>

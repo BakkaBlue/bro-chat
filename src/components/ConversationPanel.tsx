@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useCharacterStore } from "../stores/characterStore";
 import { useConversationStore } from "../stores/conversationStore";
 import ConversationListItem from "./ConversationListItem";
@@ -67,17 +68,18 @@ export default function ConversationPanel() {
           <button
             onClick={() => create(selectedCharId)}
             title="新建对话（自动轮流开场白）"
-            className="rounded-l-md bg-neutral-800 px-2 py-1 text-[11px] text-white hover:bg-neutral-700 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
+            className="flex items-center gap-1 rounded-l-lg bg-neutral-800 px-2.5 py-1.5 text-[11px] text-white hover:bg-neutral-700 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
           >
-            ＋ 新对话
+            <Plus className="size-3.5" />
+            新对话
           </button>
           <div ref={menuRef} className="relative">
             <button
               onClick={openMenu}
               title="选择开场白"
-              className="rounded-r-md border-l border-neutral-600 bg-neutral-800 px-1.5 py-1 text-[11px] text-white hover:bg-neutral-700 dark:border-neutral-400 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
+              className="flex h-full items-center rounded-r-lg border-l border-neutral-600 bg-neutral-800 px-1.5 py-1.5 text-white hover:bg-neutral-700 dark:border-neutral-400 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
             >
-              ▾
+              <ChevronDown className="size-3.5" />
             </button>
             {menuOpen && greetings && (
               <div className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-600 dark:bg-neutral-800">
