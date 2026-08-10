@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 本地工具元数据
+.kagent
+.claude/settings.local.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
