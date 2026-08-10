@@ -4,6 +4,8 @@ import type {
   CharacterInput,
   CharacterSummary,
   ConversationSummary,
+  Lorebook,
+  LorebookInput,
   Message,
   Settings,
 } from "../types";
@@ -23,14 +25,24 @@ export const exportCard = (id: string, path: string) =>
 // 对话
 export const listConversations = (characterId: string) =>
   invoke<ConversationSummary[]>("list_conversations", { characterId });
-export const createConversation = (characterId: string) =>
-  invoke<ConversationSummary>("create_conversation", { characterId });
+export const createConversation = (characterId: string, greetingIndex?: number) =>
+  invoke<ConversationSummary>("create_conversation", { characterId, greetingIndex });
 export const renameConversation = (id: string, title: string) =>
   invoke<void>("rename_conversation", { id, title });
 export const deleteConversation = (id: string) =>
   invoke<void>("delete_conversation", { id });
 export const getMessages = (conversationId: string) =>
   invoke<Message[]>("get_messages", { conversationId });
+
+// 世界书
+export const getLorebook = (characterId: string) =>
+  invoke<Lorebook | null>("get_lorebook", { characterId });
+export const saveLorebook = (characterId: string, input: LorebookInput) =>
+  invoke<Lorebook>("save_lorebook", { characterId, input });
+export const deleteLorebook = (characterId: string) =>
+  invoke<void>("delete_lorebook", { characterId });
+export const importWorldbookFile = (path: string) =>
+  invoke<LorebookInput>("import_worldbook_file", { path });
 
 // 聊天
 export const sendMessage = (conversationId: string, content: string) =>

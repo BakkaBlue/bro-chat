@@ -69,3 +69,56 @@ export interface Settings {
   ui_theme: "system" | "light" | "dark";
   ui_font_size: number;
 }
+
+// ---------- 世界书（lorebook） ----------
+
+export interface LoreEntry {
+  id: string;
+  keys: string[];
+  secondary_keys: string[];
+  comment: string;
+  content: string;
+  constant: boolean;
+  selective: boolean;
+  insertion_order: number;
+  enabled: boolean;
+  position: string; // before_char | after_char
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Lorebook {
+  id: string;
+  character_id: string;
+  name: string;
+  description: string;
+  scan_depth: number;
+  token_budget: number;
+  recursive_scanning: boolean;
+  enabled: boolean;
+  entries: LoreEntry[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoreEntryInput {
+  keys: string[];
+  secondary_keys: string[];
+  comment: string;
+  content: string;
+  constant: boolean;
+  selective: boolean;
+  insertion_order: number;
+  enabled: boolean;
+  position: string;
+}
+
+export interface LorebookInput {
+  name: string;
+  description: string;
+  scan_depth: number;
+  token_budget: number;
+  recursive_scanning: boolean;
+  enabled: boolean;
+  entries: LoreEntryInput[];
+}

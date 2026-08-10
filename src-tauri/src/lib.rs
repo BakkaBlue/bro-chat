@@ -41,6 +41,7 @@ pub fn run() {
             commands::lorebook::get_lorebook,
             commands::lorebook::save_lorebook,
             commands::lorebook::delete_lorebook,
+            commands::lorebook::import_worldbook_file,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::settings::list_models,

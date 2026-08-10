@@ -3,6 +3,7 @@ import type { CharacterInput } from "../types";
 import { useCharacterStore } from "../stores/characterStore";
 import { useUiStore } from "../stores/uiStore";
 import AvatarPicker from "./AvatarPicker";
+import LorebookEditor from "./LorebookEditor";
 
 const inputCls =
   "w-full rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-neutral-400 dark:border-neutral-600 dark:bg-neutral-800";
@@ -237,6 +238,8 @@ export default function CharacterEditorModal() {
           />
           标记为 NSFW 内容
         </label>
+
+        {editingId && <LorebookEditor characterId={editingId} />}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

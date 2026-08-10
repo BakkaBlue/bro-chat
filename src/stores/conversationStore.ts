@@ -13,10 +13,14 @@ interface ConversationState {
   loadForCharacter: (characterId: string | null) => Promise<void>;
   refresh: () => Promise<void>;
   select: (id: string) => void;
-  create: (characterId: string) => Promise<ConversationSummary | null>;
+  /** greetingIndex 不传 = 自动轮流（会话内记忆游标） */
+  create: (characterId: string, greetingIndex?: number) => Promise<ConversationSummary | null>;
   remove: (id: string) => Promise<void>;
   rename: (id: string, title: string) => Promise<void>;
 }
+
+// 开场白轮流游标（会话级记忆，显式选择会推进游标）
+const greetingCursor: Record<string, number> = {};
 
 export const useConversationStore = create<ConversationState>((set, get) => ({
   items: [],
@@ -57,9 +61,24 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     useChatStore.getState().load(id);
   },
 
-  create: async (characterId) => {
+  create: async (characterId, greetingIndex) => {
     try {
-      const conv = await api.createConversation(characterId);
+      let index = greetingIndex;
+      if (index === undefined) {
+        // 自动轮流：取角色开场白数，游标 +1
+        try {
+          const c = await useCharacterStore.getState().fetchOne(characterId);
+          const msgs = c.first_messages.filter((s) => s.trim());
+          if (msgs.length > 1) {
+            const cur = greetingCursor[characterId] ?? 0;
+            index = cur % msgs.length;
+            greetingCursor[characterId] = cur + 1;
+          }
+        } catch {
+          // 拿不到开场白就默认第一条
+        }
+      }
+      const conv = await api.createConversation(characterId, index);
       await get().loadForCharacter(characterId);
       set({ selectedId: conv.id });
       useChatStore.getState().load(conv.id);
