@@ -56,11 +56,14 @@ export default function Sidebar() {
     onSelectRange: (indices) => setSelection(indices.map((i) => filtered[i].id)),
   });
 
-  // 拖拽排序（插入指示线方案）
-  const { dragIndex, overIndex, itemProps } = useDragSort(filtered, (arr) => {
-    reorderLocally(arr.map((x) => x.id));
-    commitReorder();
-  });
+  // 拖拽排序（纯指针事件，实时重排）
+  const { dragIndex, itemMouseDown } = useDragSort(
+    listRef,
+    filtered,
+    (ids) => reorderLocally(ids),
+    () => commitReorder(),
+    !dragEnabled,
+  );
 
   const handleItemClick = (id: string) => {
     if (multiSelect) {
@@ -131,18 +134,12 @@ export default function Sidebar() {
           filtered.map((c, i) => {
             const multiSel = selectedIds.includes(c.id);
             const dragging = dragIndex === i;
-            const lineAbove = overIndex === i;
-            const lineBelow = overIndex === filtered.length && i === filtered.length - 1;
             return (
               <div
                 key={c.id}
                 data-sortable
-                {...(dragEnabled ? itemProps(i) : { draggable: false })}
-                className={`border-t-2 transition-colors ${
-                  lineAbove || lineBelow
-                    ? "border-indigo-400"
-                    : "border-transparent"
-                } ${dragging ? "opacity-40" : ""} ${
+                onMouseDown={itemMouseDown(i)}
+                className={`transition-opacity ${dragging ? "opacity-40" : ""} ${
                   multiSel ? "rounded-lg ring-2 ring-indigo-400/70" : ""
                 }`}
               >
