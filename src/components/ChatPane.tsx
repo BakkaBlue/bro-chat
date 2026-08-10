@@ -85,7 +85,7 @@ export default function ChatPane() {
 
   if (!convId) {
     return (
-      <main className="flex flex-col">
+      <main className="flex h-full min-w-0 flex-1 flex-col">
         <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-neutral-400">
           {charName ? "选择或新建一个对话开始聊天" : "选择一个角色开始聊天"}
         </div>
@@ -94,7 +94,7 @@ export default function ChatPane() {
   }
 
   return (
-    <main className="flex min-h-0 flex-col">
+    <main className="flex h-full min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-700">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{convTitle}</h2>

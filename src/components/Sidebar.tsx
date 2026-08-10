@@ -23,7 +23,7 @@ export default function Sidebar() {
   }, [items, search]);
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
+    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
       <header className="flex items-center gap-2 border-b border-neutral-200 px-3 py-2.5 dark:border-neutral-700">
         <h1 className="text-sm font-semibold">角色</h1>
         <span className="text-xs text-neutral-400">{items.length}</span>

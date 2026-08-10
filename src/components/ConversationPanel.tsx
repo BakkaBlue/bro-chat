@@ -48,7 +48,7 @@ export default function ConversationPanel() {
 
   if (!selectedCharId) {
     return (
-      <aside className="flex flex-col border-r border-neutral-200 dark:border-neutral-700">
+      <aside className="flex h-full w-64 shrink-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
         <header className="border-b border-neutral-200 px-4 py-3 text-sm font-semibold dark:border-neutral-700">
           对话
         </header>
@@ -60,7 +60,7 @@ export default function ConversationPanel() {
   }
 
   return (
-    <aside className="flex min-h-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
       <header className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5 dark:border-neutral-700">
         <h2 className="truncate text-sm font-semibold">{selectedCharName}</h2>
         <div className="flex items-center">

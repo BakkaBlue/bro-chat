@@ -134,10 +134,12 @@ export default function App() {
     return () => timers.forEach(clearTimeout);
   }, [settings?.chat_auto_load_last, charCount]);
 
+  // flex 全高布局：三个面板各自 h-full flex 列，滚动区在面板内部。
+  // 不依赖 grid 模板，任何一层异常都不会导致整体塌缩。
   const shell = (children: React.ReactNode) => (
     <div
       id="app-root"
-      className="relative grid h-full grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+      className="relative flex h-full overflow-hidden bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
     >
       {/* 背景层（fixed 覆盖视口，模糊开关打开时经半透明面板透出） */}
       <div
@@ -150,24 +152,22 @@ export default function App() {
 
   if (view === "settings") {
     return shell(
-      <>
-        <div className="relative z-10 col-span-3 min-h-0 overflow-y-auto">
-          <SettingsView />
-        </div>
+      <div className="relative z-10 h-full w-full overflow-y-auto">
+        <SettingsView />
         <Toast />
-      </>,
+      </div>,
     );
   }
 
   return shell(
     <>
-      <div className="relative z-10 min-h-0">
+      <div className="relative z-10 h-full shrink-0">
         <Sidebar />
       </div>
-      <div className="relative z-10 min-h-0">
+      <div className="relative z-10 h-full shrink-0">
         <ConversationPanel />
       </div>
-      <div className="relative z-10 min-h-0">
+      <div className="relative z-10 h-full min-w-0 flex-1">
         <ChatPane />
       </div>
 
