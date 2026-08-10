@@ -19,19 +19,23 @@ use crate::llm::stream::{StreamConfig, stream_chat};
 use crate::models::{Character, Message, Settings};
 use crate::state::{ActiveChat, AppState};
 
+// 事件 payload 统一 camelCase，与前端 api/events.ts 类型一致
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ChunkEvent {
     request_id: String,
     delta: String,
 }
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct DoneEvent {
     request_id: String,
     message_id: String,
 }
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ErrorEvent {
     request_id: String,
     message: String,
@@ -39,6 +43,7 @@ struct ErrorEvent {
 }
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CancelledEvent {
     request_id: String,
     partial_saved: bool,
@@ -220,5 +225,45 @@ fn clear_slot(chat_slot: &Arc<Mutex<Option<ActiveChat>>>, request_id: &str) {
         if active.request_id == request_id {
             *slot = None;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 事件 payload 必须输出 camelCase，前端 api/events.ts 按此解析
+    #[test]
+    fn event_payloads_serialize_camel_case() {
+        let chunk = serde_json::to_value(ChunkEvent {
+            request_id: "r1".into(),
+            delta: "d".into(),
+        })
+        .unwrap();
+        assert_eq!(chunk["requestId"], "r1");
+        assert!(chunk.get("request_id").is_none());
+
+        let done = serde_json::to_value(DoneEvent {
+            request_id: "r1".into(),
+            message_id: "m1".into(),
+        })
+        .unwrap();
+        assert_eq!(done["messageId"], "m1");
+
+        let err = serde_json::to_value(ErrorEvent {
+            request_id: "r1".into(),
+            message: "boom".into(),
+            partial_saved: true,
+        })
+        .unwrap();
+        assert_eq!(err["partialSaved"], true);
+
+        let cancelled = serde_json::to_value(CancelledEvent {
+            request_id: "r1".into(),
+            partial_saved: false,
+        })
+        .unwrap();
+        assert_eq!(cancelled["requestId"], "r1");
+        assert_eq!(cancelled["partialSaved"], false);
     }
 }
