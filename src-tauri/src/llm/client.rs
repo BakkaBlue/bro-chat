@@ -95,7 +95,12 @@ pub fn build_request_messages(
         out.push(Msg::new("system", system_text));
     }
     for m in trimmed {
-        let content = substitute_tokens(&m.content, &character.name);
+        // 设置可关闭 assistant 消息里的令牌替换（部分模型会用原文生成）
+        let content = if m.role == "assistant" && !settings.chat_substitute_in_assistant {
+            m.content.clone()
+        } else {
+            substitute_tokens(&m.content, &character.name)
+        };
         out.push(Msg::new(m.role, content));
     }
     out

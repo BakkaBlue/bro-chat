@@ -59,6 +59,8 @@ pub struct CharacterSummary {
     pub tags: Vec<String>,
     pub nsfw: bool,
     pub avatar: Option<String>,
+    /// 卡扩展里的角色版本（_v2_extra.character_version）
+    pub character_version: Option<String>,
     pub updated_at: String,
 }
 
@@ -114,6 +116,62 @@ pub struct Settings {
     /// 界面字号（px）
     #[serde(default = "Settings::default_ui_font_size")]
     pub ui_font_size: i64,
+    /// 头像样式：rounded | circle
+    #[serde(default)]
+    pub ui_avatar_style: String,
+    /// 聊天风格：bubble | flat
+    #[serde(default)]
+    pub ui_chat_style: String,
+    #[serde(default = "Settings::default_true")]
+    pub ui_show_timestamps: bool,
+    #[serde(default = "Settings::default_true")]
+    pub ui_avatar_hover_zoom: bool,
+    #[serde(default)]
+    pub ui_reduce_motion: bool,
+    #[serde(default)]
+    pub ui_glass_blur: bool,
+    #[serde(default)]
+    pub ui_text_shadow: bool,
+    #[serde(default = "Settings::default_true")]
+    pub ui_message_animation: bool,
+    #[serde(default)]
+    pub ui_auto_expand_actions: bool,
+    #[serde(default)]
+    pub ui_reply_timer: bool,
+    #[serde(default)]
+    pub ui_show_floor: bool,
+    #[serde(default)]
+    pub ui_show_token_count: bool,
+    #[serde(default)]
+    pub ui_click_to_edit: bool,
+    /// 角色列表显示角色版本（来自卡扩展字段）
+    #[serde(default)]
+    pub char_show_version: bool,
+    /// 消息提示音
+    #[serde(default)]
+    pub chat_sound: bool,
+    /// 发送前把完整提示词打到控制台
+    #[serde(default)]
+    pub chat_debug_prompt: bool,
+    /// 一次加载的消息条数
+    #[serde(default = "Settings::default_load_messages")]
+    pub chat_load_messages: i64,
+    #[serde(default = "Settings::default_true")]
+    pub chat_auto_scroll: bool,
+    #[serde(default = "Settings::default_true")]
+    pub chat_confirm_delete: bool,
+    /// 禁止 markdown 里的外部图片/媒体
+    #[serde(default)]
+    pub chat_block_external_media: bool,
+    /// 是否在 assistant 消息里也替换 {{user}}/{{char}}
+    #[serde(default = "Settings::default_true")]
+    pub chat_substitute_in_assistant: bool,
+    /// Enter 发送模式：auto | send | newline
+    #[serde(default)]
+    pub chat_enter_mode: String,
+    /// 启动时自动加载上次对话
+    #[serde(default)]
+    pub chat_auto_load_last: bool,
 }
 
 impl Default for Settings {
@@ -128,6 +186,29 @@ impl Default for Settings {
             system_prompt: String::new(),
             ui_theme: Self::default_ui_theme(),
             ui_font_size: Self::default_ui_font_size(),
+            ui_avatar_style: String::new(),
+            ui_chat_style: String::new(),
+            ui_show_timestamps: Self::default_true(),
+            ui_avatar_hover_zoom: Self::default_true(),
+            ui_reduce_motion: false,
+            ui_glass_blur: false,
+            ui_text_shadow: false,
+            ui_message_animation: Self::default_true(),
+            ui_auto_expand_actions: false,
+            ui_reply_timer: false,
+            ui_show_floor: false,
+            ui_show_token_count: false,
+            ui_click_to_edit: false,
+            char_show_version: false,
+            chat_sound: false,
+            chat_debug_prompt: false,
+            chat_load_messages: Self::default_load_messages(),
+            chat_auto_scroll: Self::default_true(),
+            chat_confirm_delete: Self::default_true(),
+            chat_block_external_media: false,
+            chat_substitute_in_assistant: Self::default_true(),
+            chat_enter_mode: String::new(),
+            chat_auto_load_last: false,
         }
     }
 }
@@ -153,6 +234,12 @@ impl Settings {
     }
     pub fn default_ui_font_size() -> i64 {
         13
+    }
+    pub fn default_true() -> bool {
+        true
+    }
+    pub fn default_load_messages() -> i64 {
+        100
     }
 }
 

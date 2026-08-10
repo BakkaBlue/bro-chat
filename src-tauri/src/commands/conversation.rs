@@ -1,7 +1,6 @@
 use tauri::State;
 
-use crate::db::conversations;
-use crate::db::messages;
+use crate::db::{conversations, messages, settings};
 use crate::models::{ConversationSummary, Message};
 use crate::state::AppState;
 
@@ -49,5 +48,20 @@ pub fn get_messages(
     state: State<AppState>,
     conversation_id: String,
 ) -> Result<Vec<Message>, String> {
-    with_db(&state, |conn| messages::list(conn, &conversation_id))
+    with_db(&state, |conn| {
+        let s = settings::get(conn)?;
+        messages::list_limited(conn, &conversation_id, s.chat_load_messages)
+    })
+}
+
+/// 编辑单条消息内容
+#[tauri::command]
+pub fn update_message(state: State<AppState>, id: String, content: String) -> Result<(), String> {
+    with_db(&state, |conn| messages::update_content(conn, &id, &content))
+}
+
+/// 清空当前对话的全部消息
+#[tauri::command]
+pub fn clear_conversation(state: State<AppState>, id: String) -> Result<(), String> {
+    with_db(&state, |conn| messages::delete_all(conn, &id))
 }

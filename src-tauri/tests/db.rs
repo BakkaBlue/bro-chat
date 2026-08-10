@@ -164,6 +164,7 @@ fn settings_defaults_and_upsert() {
         system_prompt: "你是测试助手".into(),
         ui_theme: "dark".into(),
         ui_font_size: 14,
+        ..Default::default()
     };
     settings::update(&t.conn, &custom).unwrap();
     let got = settings::get(&t.conn).unwrap();

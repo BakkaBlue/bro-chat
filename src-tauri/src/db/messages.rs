@@ -44,7 +44,48 @@ pub fn delete_by_id(conn: &Connection, id: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// 按 seq 升序取对话消息，上限 500 条（分页为 v2）。
+/// 编辑消息内容
+pub fn update_content(conn: &Connection, id: &str, content: &str) -> AppResult<()> {
+    conn.execute(
+        "UPDATE messages SET content = ?1 WHERE id = ?2",
+        params![content, id],
+    )?;
+    Ok(())
+}
+
+/// 清空对话的全部消息
+pub fn delete_all(conn: &Connection, conversation_id: &str) -> AppResult<()> {
+    conn.execute(
+        "DELETE FROM messages WHERE conversation_id = ?1",
+        params![conversation_id],
+    )?;
+    Ok(())
+}
+
+/// 按 seq 升序取对话消息，上限 limit 条（设置里的聊天加载条数）。
+pub fn list_limited(conn: &Connection, conversation_id: &str, limit: i64) -> AppResult<Vec<Message>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, conversation_id, role, content, seq, created_at
+         FROM messages WHERE conversation_id = ?1 ORDER BY seq ASC LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![conversation_id, limit], |r| {
+        Ok(Message {
+            id: r.get(0)?,
+            conversation_id: r.get(1)?,
+            role: r.get(2)?,
+            content: r.get(3)?,
+            seq: r.get(4)?,
+            created_at: r.get(5)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
+/// 按 seq 升序取对话消息（内部上下文组装用，无上限）。
 pub fn list(conn: &Connection, conversation_id: &str) -> AppResult<Vec<Message>> {
     let mut stmt = conn.prepare(
         "SELECT id, conversation_id, role, content, seq, created_at

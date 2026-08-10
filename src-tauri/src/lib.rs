@@ -35,6 +35,8 @@ pub fn run() {
             commands::conversation::rename_conversation,
             commands::conversation::delete_conversation,
             commands::conversation::get_messages,
+            commands::conversation::update_message,
+            commands::conversation::clear_conversation,
             commands::chat::send_message,
             commands::chat::cancel_chat,
             commands::chat::regenerate,

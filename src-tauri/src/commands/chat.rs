@@ -120,6 +120,13 @@ pub async fn send_message(
 
     let request_messages = build_request_messages(&character, &s, &history, &lore);
     let body = build_body(&s, &request_messages);
+    // 调试：把完整提示词打到控制台（tauri dev 终端可见）
+    if s.chat_debug_prompt {
+        log::debug!(
+            "[提示词] 对话 {conversation_id}:\n{}",
+            serde_json::to_string_pretty(&body).unwrap_or_default()
+        );
+    }
     let cfg = StreamConfig {
         url: chat_url(&s.base_url),
         api_key: s.api_key.clone(),

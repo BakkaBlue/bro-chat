@@ -12,17 +12,28 @@ fn parse_json_string_array(s: String) -> Vec<String> {
 
 pub fn list_summaries(conn: &Connection) -> AppResult<Vec<CharacterSummary>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, tags, nsfw, avatar, updated_at FROM characters ORDER BY updated_at DESC",
+        "SELECT id, name, tags, nsfw, avatar, extensions, updated_at
+         FROM characters ORDER BY updated_at DESC",
     )?;
     let rows = stmt.query_map([], |r| {
         let avatar: Option<Vec<u8>> = r.get(4)?;
+        let extensions: Option<String> = r.get(5)?;
+        let character_version = extensions
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|v| {
+                v.get("_v2_extra")
+                    .and_then(|e| e.get("character_version"))
+                    .and_then(|c| c.as_str())
+                    .map(|s| s.to_string())
+            });
         Ok(CharacterSummary {
             id: r.get(0)?,
             name: r.get(1)?,
             tags: parse_json_string_array(r.get(2)?),
             nsfw: r.get::<_, i64>(3)? != 0,
             avatar: avatar.as_deref().map(avatar::encode),
-            updated_at: r.get(5)?,
+            character_version,
+            updated_at: r.get(6)?,
         })
     })?;
     let mut out = Vec::new();
