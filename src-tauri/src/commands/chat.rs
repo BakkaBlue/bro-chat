@@ -108,19 +108,80 @@ pub async fn send_message(
         body,
     };
 
+    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    Ok(request_id)
+}
+
+/// 重新生成最后一条 assistant 回复：删除该条后重新发起流式请求。
+/// 若最后一条是 user 消息（无回复可删），直接重新生成。
+#[tauri::command]
+pub async fn regenerate(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    conversation_id: String,
+) -> Result<String, String> {
+    let request_id = Uuid::new_v4().to_string();
+
+    let (character, s, history, cancel_rx) = {
+        let mut slot = state.chat.lock().unwrap();
+        if slot.is_some() {
+            return Err("已有生成中的回复，请先停止".into());
+        }
+        let snapshot: AppResult<(Character, Settings, Vec<Message>)> = (|| {
+            let conn = state.db.lock().unwrap();
+            let conv = conversations::get_required(&conn, &conversation_id)?;
+            let character = characters::get_required(&conn, &conv.character_id)?;
+            let s = settings::get(&conn)?;
+            let mut history = messages::list(&conn, &conversation_id)?;
+            if let Some(last) = history.last() {
+                if last.role == "assistant" {
+                    messages::delete_by_id(&conn, &last.id)?;
+                    history.pop();
+                }
+            }
+            Ok((character, s, history))
+        })();
+        let (character, s, history) = snapshot.map_err(|e| e.to_string())?;
+        let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+        *slot = Some(ActiveChat {
+            request_id: request_id.clone(),
+            cancel_tx,
+        });
+        (character, s, history, cancel_rx)
+    };
+
+    let request_messages = build_request_messages(&character, &s, &history);
+    let body = build_body(&s, &request_messages);
+    let cfg = StreamConfig {
+        url: chat_url(&s.base_url),
+        api_key: s.api_key.clone(),
+        body,
+    };
+
+    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    Ok(request_id)
+}
+
+/// 组流式任务配置并 spawn（send_message / regenerate 共用）
+fn spawn_stream_task(
+    state: &AppState,
+    app: AppHandle,
+    request_id: String,
+    cancel_rx: oneshot::Receiver<()>,
+    cfg: StreamConfig,
+    conversation_id: String,
+) {
     let db = state.db.clone();
     let chat_slot = state.chat.clone();
     tauri::async_runtime::spawn(stream_task(
         app,
         db,
         chat_slot,
-        request_id.clone(),
+        request_id,
         cancel_rx,
         cfg,
         conversation_id,
     ));
-
-    Ok(request_id)
 }
 
 #[tauri::command]

@@ -42,6 +42,31 @@ export default function App() {
     });
   }, []);
 
+  // 界面设置：主题（跟随系统/浅/深）
+  const uiTheme = useSettingsStore((s) => s.settings?.ui_theme);
+  useEffect(() => {
+    const t = uiTheme ?? "system";
+    const apply = () => {
+      const dark =
+        t === "dark" ||
+        (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    };
+    apply();
+    if (t === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+  }, [uiTheme]);
+
+  // 界面设置：消息字号
+  const uiFontSize = useSettingsStore((s) => s.settings?.ui_font_size);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--msg-font-size", `${uiFontSize ?? 13}px`);
+  }, [uiFontSize]);
+
   if (view === "settings") {
     return (
       <div className="h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">

@@ -38,6 +38,12 @@ pub fn insert(
     })
 }
 
+/// 按 id 删除单条消息（重新生成时删除最后一条 assistant 回复）
+pub fn delete_by_id(conn: &Connection, id: &str) -> AppResult<()> {
+    conn.execute("DELETE FROM messages WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
 /// 按 seq 升序取对话消息，上限 500 条（分页为 v2）。
 pub fn list(conn: &Connection, conversation_id: &str) -> AppResult<Vec<Message>> {
     let mut stmt = conn.prepare(

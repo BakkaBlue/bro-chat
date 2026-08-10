@@ -19,6 +19,8 @@ enum Scenario {
     MidStreamClose,
     /// 每 50ms 一个 chunk，持续不断（测试取消）
     SlowStream,
+    /// 返回模型列表（GET /v1/models）
+    Models,
 }
 
 const DELTA1: &str = "你好，世界";
@@ -46,8 +48,13 @@ fn role_chunk() -> Vec<u8> {
     sse_line(&json!({"choices": [{"delta": {"role": "assistant"}}]}).to_string())
 }
 
-/// 启动一个一次性 mock 服务器，返回地址；auth_tx 收到请求的 Authorization 头
-async fn serve_one(scenario: Scenario, auth_tx: Option<oneshot::Sender<String>>) -> String {
+/// 启动一个一次性 mock 服务器，返回地址；
+/// auth_tx 收到请求的 Authorization 头；request_line_tx 收到请求首行
+async fn serve_one(
+    scenario: Scenario,
+    auth_tx: Option<oneshot::Sender<String>>,
+    request_line_tx: Option<oneshot::Sender<String>>,
+) -> String {
     setup_no_proxy();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap().to_string();
@@ -61,6 +68,10 @@ async fn serve_one(scenario: Scenario, auth_tx: Option<oneshot::Sender<String>>)
                 .map(|l| l.to_string())
                 .unwrap_or_default();
             let _ = tx.send(auth);
+        }
+        if let Some(tx) = request_line_tx {
+            let first = head.lines().next().unwrap_or_default().to_string();
+            let _ = tx.send(first);
         }
         match scenario {
             Scenario::Success => {
@@ -109,6 +120,13 @@ async fn serve_one(scenario: Scenario, auth_tx: Option<oneshot::Sender<String>>)
                     let _ = sock.flush().await;
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
+            }
+            Scenario::Models => {
+                let _ = sock
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"data\":[{\"id\":\"deepseek-chat\"},{\"id\":\"deepseek-reasoner\"}]}",
+                    )
+                    .await;
             }
         }
     });
@@ -163,7 +181,7 @@ fn cfg_for(addr: &str) -> StreamConfig {
 #[tokio::test]
 async fn stream_success_full_text_and_auth() {
     let (auth_tx, auth_rx) = oneshot::channel();
-    let addr = serve_one(Scenario::Success, Some(auth_tx)).await;
+    let addr = serve_one(Scenario::Success, Some(auth_tx), None).await;
 
     let mut chunks: Vec<String> = Vec::new();
     let result = stream_chat(&cfg_for(&addr), None, |d| chunks.push(d.to_string())).await;
@@ -181,7 +199,7 @@ async fn stream_success_full_text_and_auth() {
 #[tokio::test]
 async fn no_auth_header_when_key_empty() {
     let (auth_tx, auth_rx) = oneshot::channel();
-    let addr = serve_one(Scenario::Success, Some(auth_tx)).await;
+    let addr = serve_one(Scenario::Success, Some(auth_tx), None).await;
     let mut cfg = cfg_for(&addr);
     cfg.api_key = String::new();
 
@@ -193,7 +211,7 @@ async fn no_auth_header_when_key_empty() {
 
 #[tokio::test]
 async fn stream_http_401_error() {
-    let addr = serve_one(Scenario::Http401, None).await;
+    let addr = serve_one(Scenario::Http401, None, None).await;
     let result = stream_chat(&cfg_for(&addr), None, |_| {}).await;
     let err = result.error.unwrap();
     assert!(err.contains("HTTP 401"), "err: {err}");
@@ -202,7 +220,7 @@ async fn stream_http_401_error() {
 
 #[tokio::test]
 async fn stream_midstream_close_keeps_partial() {
-    let addr = serve_one(Scenario::MidStreamClose, None).await;
+    let addr = serve_one(Scenario::MidStreamClose, None, None).await;
     let result = stream_chat(&cfg_for(&addr), None, |_| {}).await;
     assert!(result.error.is_some(), "断流应报错");
     assert!(
@@ -214,7 +232,7 @@ async fn stream_midstream_close_keeps_partial() {
 
 #[tokio::test]
 async fn stream_cancel_keeps_partial() {
-    let addr = serve_one(Scenario::SlowStream, None).await;
+    let addr = serve_one(Scenario::SlowStream, None, None).await;
     let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
     let (chunk_tx, mut chunk_rx) = tokio::sync::mpsc::channel(8);
 
@@ -251,4 +269,28 @@ async fn stream_rejects_bad_url() {
     let result = stream_chat(&cfg, None, |_| {}).await;
     assert!(result.error.is_some());
     assert!(result.text.is_empty());
+}
+
+#[tokio::test]
+async fn fetch_models_from_upstream() {
+    let (line_tx, line_rx) = oneshot::channel();
+    let addr = serve_one(Scenario::Models, None, Some(line_tx)).await;
+
+    let models = brochat_lib::llm::client::fetch_models(&format!("http://{addr}/v1"), "sk").await;
+    assert_eq!(
+        models.unwrap(),
+        vec!["deepseek-chat".to_string(), "deepseek-reasoner".to_string()]
+    );
+
+    // 请求路径应为 /v1/models
+    let line = line_rx.await.unwrap();
+    assert!(line.starts_with("GET /v1/models"), "request line: {line}");
+}
+
+#[tokio::test]
+async fn fetch_models_error_path() {
+    let addr = serve_one(Scenario::Http401, None, None).await;
+    let err = brochat_lib::llm::client::fetch_models(&format!("http://{addr}/v1"), "bad").await;
+    let err = err.unwrap_err();
+    assert!(err.contains("HTTP 401"), "err: {err}");
 }

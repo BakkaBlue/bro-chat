@@ -66,4 +66,6 @@ export interface Settings {
   max_tokens: number;
   max_context_tokens: number;
   system_prompt: string;
+  ui_theme: "system" | "light" | "dark";
+  ui_font_size: number;
 }

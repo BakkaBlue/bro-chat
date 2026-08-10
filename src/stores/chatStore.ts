@@ -20,6 +20,8 @@ interface ChatState {
   load: (conversationId: string | null) => Promise<void>;
   send: (content: string) => Promise<void>;
   stop: () => void;
+  /** 重新生成最后一条 assistant 回复（Rust 侧删除该条后重新流式请求） */
+  regenerate: () => Promise<void>;
   reset: () => void;
 
   // 事件层回调（App.tsx 注册 listen 后分发到这里）
@@ -90,6 +92,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { streaming } = get();
     if (streaming) {
       api.cancelChat(streaming.requestId).catch(() => {});
+    }
+  },
+
+  regenerate: async () => {
+    const { selectedId } = useConversationStore.getState();
+    if (!selectedId || get().streaming) return;
+    try {
+      const requestId = await api.regenerateReply(selectedId);
+      // 与服务端一致：去掉最后一条 assistant 回复，进入流式占位
+      const messages = get().messages;
+      const lastAssistantIdx = [...messages]
+        .reverse()
+        .findIndex((m) => m.role === "assistant");
+      const trimmed =
+        lastAssistantIdx >= 0
+          ? messages.slice(0, messages.length - lastAssistantIdx - 1)
+          : messages;
+      set({
+        messages: trimmed,
+        lastError: null,
+        streaming: { requestId, conversationId: selectedId, text: "" },
+      });
+    } catch (e) {
+      set({ lastError: String(e) });
     }
   },
 

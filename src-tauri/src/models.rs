@@ -108,6 +108,12 @@ pub struct Settings {
     pub max_context_tokens: i64,
     #[serde(default)]
     pub system_prompt: String,
+    /// 界面主题：system | light | dark
+    #[serde(default = "Settings::default_ui_theme")]
+    pub ui_theme: String,
+    /// 界面字号（px）
+    #[serde(default = "Settings::default_ui_font_size")]
+    pub ui_font_size: i64,
 }
 
 impl Default for Settings {
@@ -120,6 +126,8 @@ impl Default for Settings {
             max_tokens: Self::default_max_tokens(),
             max_context_tokens: Self::default_max_context_tokens(),
             system_prompt: String::new(),
+            ui_theme: Self::default_ui_theme(),
+            ui_font_size: Self::default_ui_font_size(),
         }
     }
 }
@@ -139,5 +147,11 @@ impl Settings {
     }
     pub fn default_max_context_tokens() -> i64 {
         8192
+    }
+    pub fn default_ui_theme() -> String {
+        "system".into()
+    }
+    pub fn default_ui_font_size() -> i64 {
+        13
     }
 }

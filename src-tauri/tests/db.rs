@@ -162,6 +162,8 @@ fn settings_defaults_and_upsert() {
         max_tokens: 2048,
         max_context_tokens: 4096,
         system_prompt: "你是测试助手".into(),
+        ui_theme: "dark".into(),
+        ui_font_size: 14,
     };
     settings::update(&t.conn, &custom).unwrap();
     let got = settings::get(&t.conn).unwrap();

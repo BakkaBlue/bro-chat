@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
+/* 主题切换用 .dark class（设置里可手动选，默认跟随系统） */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light dark;
+  --msg-font-size: 13px;
 }
 
 body {

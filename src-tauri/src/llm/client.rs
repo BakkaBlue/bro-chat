@@ -5,14 +5,35 @@ use serde_json::json;
 use crate::llm::context::{Msg, substitute_tokens};
 use crate::models::{Character, Message, Settings};
 
-/// base_url 规范化：去尾斜杠，无 /v1 则补上，最终指向 chat/completions。
+/// base_url 规范化，自动识别并补齐后缀：
+/// - 已以 /chat/completions 结尾 → 原样使用（上游给了完整路径）
+/// - 以 /v1 结尾 → 直接拼 /chat/completions
+/// - 其他（裸域名/带 /api 等）→ 补 /v1 再拼
 /// Ollama 默认 http://localhost:11434/v1 也走这里。
 pub fn chat_url(base_url: &str) -> String {
-    let mut base = base_url.trim().trim_end_matches('/').to_string();
-    if !base.ends_with("/v1") {
-        base.push_str("/v1");
+    let base = base_url.trim().trim_end_matches('/');
+    if base.ends_with("/chat/completions") {
+        return base.to_string();
     }
-    format!("{base}/chat/completions")
+    let mut b = base.to_string();
+    if !b.ends_with("/v1") {
+        b.push_str("/v1");
+    }
+    format!("{b}/chat/completions")
+}
+
+/// 模型列表接口地址（与 chat_url 同一规范化基准）。
+/// 上游给了完整 chat/completions 路径 → 同级替换为 /models（不插 /v1）。
+pub fn models_url(base_url: &str) -> String {
+    let base = base_url.trim().trim_end_matches('/');
+    if let Some(stripped) = base.strip_suffix("/chat/completions") {
+        return format!("{}/models", stripped.trim_end_matches('/'));
+    }
+    let mut b = base.to_string();
+    if !b.ends_with("/v1") {
+        b.push_str("/v1");
+    }
+    format!("{b}/models")
 }
 
 /// 部分新模型不接受 max_tokens，需要 max_completion_tokens（gpt-5/o1/o3/o4 系）
@@ -90,6 +111,45 @@ pub fn build_body(settings: &Settings, messages: &[Msg]) -> serde_json::Value {
     body
 }
 
+/// 拉取上游模型列表（OpenAI 兼容 GET /v1/models）
+pub async fn fetch_models(base_url: &str, api_key: &str) -> Result<Vec<String>, String> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))?;
+    let mut req = client.get(models_url(base_url));
+    if !api_key.is_empty() {
+        req = req.bearer_auth(api_key);
+    }
+    let resp = req.send().await.map_err(|e| format!("请求失败: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        let text = if text.chars().count() > 200 {
+            text.chars().take(200).collect::<String>() + "…"
+        } else {
+            text
+        };
+        return Err(format!("HTTP {status}: {text}"));
+    }
+    let v: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("响应解析失败: {e}"))?;
+    let ids: Vec<String> = v["data"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|m| m["id"].as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    if ids.is_empty() {
+        return Err("上游未返回模型列表（可手动输入模型名）".into());
+    }
+    Ok(ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +169,36 @@ mod tests {
         assert_eq!(
             chat_url("http://localhost:11434/v1"),
             "http://localhost:11434/v1/chat/completions"
+        );
+        // 上游给了完整路径 → 原样使用，不重复拼
+        assert_eq!(
+            chat_url("https://api.deepseek.com/v1/chat/completions"),
+            "https://api.deepseek.com/v1/chat/completions"
+        );
+        assert_eq!(
+            chat_url("https://proxy.example.com/api/chat/completions/"),
+            "https://proxy.example.com/api/chat/completions"
+        );
+    }
+
+    #[test]
+    fn models_url_normalization() {
+        assert_eq!(
+            models_url("https://api.deepseek.com"),
+            "https://api.deepseek.com/v1/models"
+        );
+        assert_eq!(
+            models_url("https://api.deepseek.com/v1"),
+            "https://api.deepseek.com/v1/models"
+        );
+        // 完整 chat/completions 路径 → 替换为 models
+        assert_eq!(
+            models_url("https://proxy.example.com/api/chat/completions"),
+            "https://proxy.example.com/api/models"
+        );
+        assert_eq!(
+            models_url("http://localhost:11434/v1"),
+            "http://localhost:11434/v1/models"
         );
     }
 

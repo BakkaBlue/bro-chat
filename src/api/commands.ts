@@ -37,8 +37,11 @@ export const sendMessage = (conversationId: string, content: string) =>
   invoke<string>("send_message", { conversationId, content });
 export const cancelChat = (requestId: string) =>
   invoke<void>("cancel_chat", { requestId });
+export const regenerateReply = (conversationId: string) =>
+  invoke<string>("regenerate", { conversationId });
 
 // 设置
 export const getSettings = () => invoke<Settings>("get_settings");
 export const updateSettings = (settings: Settings) =>
   invoke<void>("update_settings", { settings });
+export const listModels = () => invoke<string[]>("list_models");

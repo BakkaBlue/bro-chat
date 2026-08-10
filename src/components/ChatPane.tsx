@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChatStore } from "../stores/chatStore";
 import { useConversationStore } from "../stores/conversationStore";
 import { useCharacterStore } from "../stores/characterStore";
@@ -23,6 +23,15 @@ export default function ChatPane() {
 
   const streamingText = streaming?.conversationId === convId ? streaming.text : null;
   const streamingActive = streaming !== null && streaming.conversationId === convId;
+
+  // 最后一条 assistant 回复的 id（只有它可重新生成）
+  const lastAssistantId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i].id;
+    }
+    return null;
+  }, [messages]);
+  const regenerate = useChatStore((s) => s.regenerate);
 
   // 新内容时自动滚底（用户上滚时不打扰）
   useEffect(() => {
@@ -72,7 +81,12 @@ export default function ChatPane() {
         ) : (
           <div className="flex flex-col gap-4">
             {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} />
+              <MessageBubble
+                key={m.id}
+                message={m}
+                canRegenerate={m.role === "assistant" && m.id === lastAssistantId}
+                onRegenerate={regenerate}
+              />
             ))}
             {streamingActive && (
               <MessageBubble
