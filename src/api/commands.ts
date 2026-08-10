@@ -32,6 +32,12 @@ export const deleteConversation = (id: string) =>
 export const getMessages = (conversationId: string) =>
   invoke<Message[]>("get_messages", { conversationId });
 
+// 聊天
+export const sendMessage = (conversationId: string, content: string) =>
+  invoke<string>("send_message", { conversationId, content });
+export const cancelChat = (requestId: string) =>
+  invoke<void>("cancel_chat", { requestId });
+
 // 设置
 export const getSettings = () => invoke<Settings>("get_settings");
 export const updateSettings = (settings: Settings) =>

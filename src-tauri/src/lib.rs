@@ -3,6 +3,7 @@ pub mod cards;
 mod commands;
 pub mod db;
 mod error;
+pub mod llm;
 pub mod models;
 mod state;
 
@@ -17,7 +18,7 @@ pub fn run() {
             let db = db::init_app(app.handle())?;
             app.manage(state::AppState {
                 db,
-                chat: std::sync::Mutex::new(None),
+                chat: std::sync::Arc::new(std::sync::Mutex::new(None)),
             });
             Ok(())
         })
@@ -29,6 +30,15 @@ pub fn run() {
             commands::character::delete_character,
             commands::character::import_card,
             commands::character::export_card,
+            commands::conversation::list_conversations,
+            commands::conversation::create_conversation,
+            commands::conversation::rename_conversation,
+            commands::conversation::delete_conversation,
+            commands::conversation::get_messages,
+            commands::chat::send_message,
+            commands::chat::cancel_chat,
+            commands::settings::get_settings,
+            commands::settings::update_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

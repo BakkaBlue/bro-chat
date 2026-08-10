@@ -95,6 +95,16 @@ pub fn rename(conn: &Connection, id: &str, title: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// 自动标题：只在仍是默认「新对话」时改名（发送第一条用户消息后调用）
+pub fn rename_if_untitled(conn: &Connection, id: &str, title: &str) -> AppResult<()> {
+    conn.execute(
+        "UPDATE conversations SET title = ?1, updated_at = ?2
+         WHERE id = ?3 AND title = '新对话'",
+        params![title, Utc::now().to_rfc3339(), id],
+    )?;
+    Ok(())
+}
+
 pub fn delete(conn: &Connection, id: &str) -> AppResult<()> {
     conn.execute("DELETE FROM conversations WHERE id = ?1", params![id])?;
     Ok(())

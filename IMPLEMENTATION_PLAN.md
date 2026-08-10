@@ -25,8 +25,8 @@ Tauri 2.11 / React 19 / TypeScript / Vite 7 / Tailwind CSS v4 / Zustand 5 / rusq
 
 **Goal**: 完整流式对话循环端到端。
 **Success Criteria**: DeepSeek + 本地 Ollama 流式对话；中途停止保留部分；重启恢复完整历史；DOMPurify 惰性渲染脚本字符串；设置改动下次发送生效。
-**Tests**: sse.rs（跨 chunk 断行/CRLF/注释/多行 data/[DONE]/垃圾字节/空 delta）；context.rs（CJK vs ASCII 估算、trim 保留 system+最新 user、整对丢弃、超预算）；令牌替换。
-**Status**: 未开始
+**Tests**: sse.rs（跨 chunk 断行/CRLF/注释/多行 data/[DONE]/垃圾字节/空 delta）；context.rs（CJK vs ASCII 估算、trim 保留 system+最新 user、整对丢弃、超预算）；令牌替换；stream.rs mock 服务器端到端（正常流式/401/断流保留部分/取消保留部分/Authorization 头）。
+**Status**: Complete
 
 ## Stage 4 — 上下文管理与打磨
 

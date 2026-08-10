@@ -19,11 +19,23 @@ pub fn init_conn(path: &Path) -> AppResult<Connection> {
         std::fs::create_dir_all(dir)?;
     }
     let mut conn = Connection::open(path)?;
+    apply_conn_settings(&mut conn)?;
+    Ok(conn)
+}
+
+/// 内存数据库（测试用）
+pub fn init_conn_memory() -> AppResult<Connection> {
+    let mut conn = Connection::open_in_memory()?;
+    apply_conn_settings(&mut conn)?;
+    Ok(conn)
+}
+
+fn apply_conn_settings(conn: &mut Connection) -> AppResult<()> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.pragma_update(None, "busy_timeout", 5000)?;
-    migrations::migrate(&mut conn)?;
-    Ok(conn)
+    migrations::migrate(conn)?;
+    Ok(())
 }
 
 /// Tauri 应用启动时初始化数据库并放入 AppState。
