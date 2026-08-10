@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
-import ConversationPanel from "./components/ConversationPanel";
 import ChatPane from "./components/ChatPane";
 import CharacterEditorModal from "./components/CharacterEditorModal";
+import WorldbookModal from "./components/WorldbookModal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Toast from "./components/Toast";
 import SettingsView from "./components/SettingsView";
@@ -13,13 +13,18 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { useUiStore } from "./stores/uiStore";
 import { onChatEvents } from "./api/events";
 
-// 三栏布局：角色列表 | 对话列表 | 聊天区；设置整窗覆盖
+// 布局：左侧可收回层级边栏（角色 → 对话）+ 右侧聊天区；设置整窗覆盖。
+// 背景层在最底，配合「背景模糊」开关显示毛玻璃效果。
 export default function App() {
   const view = useUiStore((s) => s.view);
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const setView = useUiStore((s) => s.setView);
   const selectedCharId = useCharacterStore((s) => s.selectedId);
   const loadCharacters = useCharacterStore((s) => s.load);
   const loadSettings = useSettingsStore((s) => s.load);
   const settings = useSettingsStore((s) => s.settings);
+  const bgImage = useSettingsStore((s) => s.bgImage);
 
   // 启动：加载角色列表与设置
   useEffect(() => {
@@ -27,7 +32,7 @@ export default function App() {
     loadSettings();
   }, [loadCharacters, loadSettings]);
 
-  // 角色切换 → 加载对应对话列表
+  // 角色切换（展开）→ 加载对应对话列表
   useEffect(() => {
     useConversationStore.getState().loadForCharacter(selectedCharId);
   }, [selectedCharId]);
@@ -70,7 +75,7 @@ export default function App() {
     );
   }, [settings?.ui_font_size]);
 
-  // 界面设置：效果 class 组合（毛玻璃/文本阴影/减少动画/头像样式/聊天风格/消息动画/悬停放大）
+  // 界面设置：效果 class 组合
   useEffect(() => {
     const cls = document.getElementById("app-root");
     if (!cls) return;
@@ -95,18 +100,17 @@ export default function App() {
     settings?.ui_avatar_hover_zoom,
   ]);
 
-  // 自动化：启动后自动加载上次对话（等角色列表就绪后执行）
+  // 自动化：启动后自动加载上次对话
   const charCount = useCharacterStore((s) => s.items.length);
   useEffect(() => {
     if (!settings?.chat_auto_load_last) return;
-    if (charCount === 0) return; // 角色列表还没加载完
+    if (charCount === 0) return;
     const saved = localStorage.getItem("brochat.lastConversation");
     if (!saved) return;
     const [charId, convId] = saved.split("|");
     const { items } = useCharacterStore.getState();
     if (!charId || !convId || !items.some((c) => c.id === charId)) return;
     useCharacterStore.getState().select(charId);
-    // 对话列表加载完成后选中（轮询，最多等 1s）
     const trySelect = (attempt: number) => {
       const convs = useConversationStore.getState().items;
       if (convs.some((c) => c.id === convId)) {
@@ -118,27 +122,74 @@ export default function App() {
     setTimeout(() => trySelect(0), 50);
   }, [settings?.chat_auto_load_last, charCount]);
 
+  const shell = (children: React.ReactNode) => (
+    <div
+      id="app-root"
+      className={`relative grid h-screen bg-neutral-100 text-neutral-900 transition-[grid-template-columns] duration-200 dark:bg-neutral-900 dark:text-neutral-100 ${
+        collapsed ? "grid-cols-[36px_1fr]" : "grid-cols-[272px_1fr]"
+      }`}
+    >
+      {/* 背景层（最底，模糊开关打开时透过毛玻璃面板可见） */}
+      <div
+        className="bg-layer"
+        style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+      />
+      {children}
+    </div>
+  );
+
   if (view === "settings") {
-    return (
-      <div className="h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
-        <SettingsView />
+    return shell(
+      <>
+        <div className="relative flex flex-col items-center gap-3 border-r border-neutral-200 py-2.5 dark:border-neutral-700">
+          <button
+            onClick={toggleSidebar}
+            title="展开/收起边栏"
+            className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          >
+            ☰
+          </button>
+        </div>
+        <div className="relative min-h-0 overflow-y-auto">
+          <SettingsView />
+        </div>
         <Toast />
-      </div>
+      </>,
     );
   }
 
-  return (
-    <div
-      id="app-root"
-      className="grid h-screen grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
-    >
-      <Sidebar />
-      <ConversationPanel />
-      <ChatPane />
+  return shell(
+    <>
+      {collapsed ? (
+        <div className="relative flex flex-col items-center gap-3 border-r border-neutral-200 py-2.5 dark:border-neutral-700">
+          <button
+            onClick={toggleSidebar}
+            title="展开边栏"
+            className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          >
+            ☰
+          </button>
+          <button
+            onClick={() => setView("settings")}
+            title="设置"
+            className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          >
+            ⚙
+          </button>
+        </div>
+      ) : (
+        <div className="relative min-h-0">
+          <Sidebar />
+        </div>
+      )}
+      <div className="relative min-h-0">
+        <ChatPane />
+      </div>
 
       <CharacterEditorModal />
+      <WorldbookModal />
       <ConfirmDialog />
       <Toast />
-    </div>
+    </>,
   );
 }

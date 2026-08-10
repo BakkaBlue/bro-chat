@@ -17,6 +17,7 @@ export default function CharacterListItem({
   const remove = useCharacterStore((s) => s.remove);
   const openEditor = useUiStore((s) => s.openEditor);
   const askConfirm = useUiStore((s) => s.askConfirm);
+  const openWorldbook = useUiStore((s) => s.openWorldbook);
   const showVersion = useSettingsStore((s) => s.settings?.char_show_version ?? false);
 
   return (
@@ -59,6 +60,16 @@ export default function CharacterListItem({
         )}
       </div>
       <div className="hidden shrink-0 gap-0.5 group-hover:flex">
+        <button
+          title="世界书"
+          onClick={(e) => {
+            e.stopPropagation();
+            openWorldbook(summary.id);
+          }}
+          className="rounded px-1 py-0.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-600"
+        >
+          📖
+        </button>
         <button
           title="导出卡片"
           onClick={(e) => {

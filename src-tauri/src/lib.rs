@@ -40,6 +40,7 @@ pub fn run() {
             commands::chat::send_message,
             commands::chat::cancel_chat,
             commands::chat::regenerate,
+            commands::chat::resend_last,
             commands::lorebook::get_lorebook,
             commands::lorebook::save_lorebook,
             commands::lorebook::delete_lorebook,

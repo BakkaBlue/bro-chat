@@ -37,7 +37,15 @@ export default function ChatPane() {
     }
     return null;
   }, [messages]);
+  // 最后一条用户消息的 id（只有它可重新发送）
+  const lastUserId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].id;
+    }
+    return null;
+  }, [messages]);
   const regenerate = useChatStore((s) => s.regenerate);
+  const resend = useChatStore((s) => s.resend);
 
   // 新内容时自动滚底（用户上滚时不打扰）
   useEffect(() => {
@@ -130,6 +138,8 @@ export default function ChatPane() {
                 message={m}
                 canRegenerate={m.role === "assistant" && m.id === lastAssistantId}
                 onRegenerate={regenerate}
+                canResend={m.role === "user" && m.id === lastUserId}
+                onResend={resend}
               />
             ))}
             {streamingActive && (

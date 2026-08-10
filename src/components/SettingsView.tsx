@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Settings } from "../types";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useUiStore } from "../stores/uiStore";
@@ -79,9 +79,12 @@ export default function SettingsView() {
   const { settings, load, save } = useSettingsStore();
   const setView = useUiStore((s) => s.setView);
   const showToast = useUiStore((s) => s.showToast);
+  const bgImage = useSettingsStore((s) => s.bgImage);
+  const setBgImage = useSettingsStore((s) => s.setBgImage);
   const [form, setForm] = useState<Settings | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [tab, setTab] = useState<Tab>("model");
+  const bgInputRef = useRef<HTMLInputElement>(null);
 
   // 模型列表
   const [models, setModels] = useState<string[] | null>(null);
@@ -225,6 +228,47 @@ export default function SettingsView() {
             </h2>
             <div className="mb-4 flex flex-col gap-3">
               <div>
+                <label className={labelCls}>背景图片（配合「背景模糊」使用）</label>
+                <div className="flex items-center gap-2">
+                  {bgImage && (
+                    <img
+                      src={bgImage}
+                      alt="背景预览"
+                      className="h-10 w-16 rounded-md border border-neutral-200 object-cover dark:border-neutral-600"
+                    />
+                  )}
+                  <button
+                    onClick={() => bgInputRef.current?.click()}
+                    className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+                  >
+                    选择图片…
+                  </button>
+                  {bgImage && (
+                    <button
+                      onClick={() => setBgImage(null)}
+                      className="text-xs text-neutral-400 hover:text-rose-500"
+                    >
+                      移除
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={bgInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const reader = new FileReader();
+                      reader.onload = () => setBgImage(reader.result as string);
+                      reader.readAsDataURL(f);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+              <div>
                 <label className={labelCls}>主题名称</label>
                 <SegBtn
                   options={[
@@ -278,8 +322,8 @@ export default function SettingsView() {
             </h2>
             <div className="flex flex-col gap-1.5">
               <Toggle
-                label="模糊效果"
-                hint="面板与弹窗使用毛玻璃背景"
+                label="背景高斯模糊"
+                hint="面板毛玻璃，透出模糊的背景层"
                 checked={form.ui_glass_blur}
                 onChange={(v) => set("ui_glass_blur", v)}
               />

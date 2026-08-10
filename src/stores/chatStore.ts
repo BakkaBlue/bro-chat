@@ -27,6 +27,8 @@ interface ChatState {
   stop: () => void;
   /** 重新生成最后一条 assistant 回复（Rust 侧删除该条后重新流式请求） */
   regenerate: () => Promise<void>;
+  /** 重新发送最后一条用户消息（截断其后内容，同内容重新请求） */
+  resend: () => Promise<void>;
   /** 编辑消息内容（自动保存） */
   editMessage: (id: string, content: string) => Promise<void>;
   reset: () => void;
@@ -126,6 +128,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
           : messages;
       set({
         messages: trimmed,
+        lastError: null,
+        lastReplyMs: null,
+        streaming: {
+          requestId,
+          conversationId: selectedId,
+          text: "",
+          startedAt: Date.now(),
+        },
+      });
+    } catch (e) {
+      set({ lastError: String(e) });
+    }
+  },
+
+  resend: async () => {
+    const { selectedId } = useConversationStore.getState();
+    if (!selectedId || get().streaming) return;
+    try {
+      const requestId = await api.resendLastMessage(selectedId);
+      // 与服务端一致：截断到最后一条 user 消息之前，重新以该内容进入流式占位
+      const messages = get().messages;
+      let idx = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0) {
+        set({ lastError: "没有可重新发送的用户消息" });
+        return;
+      }
+      const lastUser = messages[idx];
+      const trimmed = messages.slice(0, idx);
+      set({
+        messages: [...trimmed, { ...lastUser, id: `tmp-${requestId}` }],
         lastError: null,
         lastReplyMs: null,
         streaming: {

@@ -19,26 +19,46 @@ body {
 
 /* ---- UI 效果（由设置项驱动，挂载在应用根元素上） ---- */
 
+/* 背景层：渐变或用户图片，位于所有面板之下 */
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(160deg, #e9edf4 0%, #dde4ee 45%, #e7e2ef 100%);
+  background-size: cover;
+  background-position: center;
+}
+.dark .bg-layer {
+  background: linear-gradient(160deg, #131518 0%, #181c22 45%, #1d1a26 100%);
+}
+
+/* 背景高斯模糊：面板变半透明 + backdrop blur，透出背景层 */
+.glass-blur aside,
+.glass-blur main {
+  background: rgb(245 245 245 / 0.72) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.dark.glass-blur aside,
+.dark.glass-blur main {
+  background: rgb(23 23 23 / 0.7) !important;
+}
+.glass-blur .glass-panel {
+  background: rgb(255 255 255 / 0.85) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.dark.glass-blur .glass-panel {
+  background: rgb(38 38 38 / 0.85) !important;
+}
+
 /* 减少动态效果：关闭全部动画与过渡 */
 .reduce-motion *,
 .reduce-motion *::before,
 .reduce-motion *::after {
   animation: none !important;
   transition: none !important;
-}
-
-/* 模糊效果：面板毛玻璃 */
-.glass-blur aside,
-.glass-blur main > header,
-.glass-blur .glass-panel {
-  background: color-mix(in srgb, var(--color-neutral-100) 70%, transparent) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.glass-blur .dark aside,
-.glass-blur .dark main > header,
-.glass-blur .dark .glass-panel {
-  background: color-mix(in srgb, var(--color-neutral-900) 70%, transparent) !important;
 }
 
 /* 文本阴影 */

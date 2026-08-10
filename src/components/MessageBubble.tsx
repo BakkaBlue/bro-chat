@@ -13,12 +13,16 @@ export default function MessageBubble({
   thinking = false,
   canRegenerate = false,
   onRegenerate,
+  canResend = false,
+  onResend,
 }: {
   message: Message;
   streaming?: boolean;
   thinking?: boolean;
   canRegenerate?: boolean;
   onRegenerate?: () => void;
+  canResend?: boolean;
+  onResend?: () => void;
 }) {
   const settings = useSettingsStore((s) => s.settings);
   const editMessage = useChatStore((s) => s.editMessage);
@@ -59,7 +63,16 @@ export default function MessageBubble({
       >
         复制
       </button>
-      {canRegenerate && (
+      {isUser && canResend && (
+        <button
+          onClick={onResend}
+          title="重新发送这条消息（截断其后内容）"
+          className="rounded px-1 text-[10px] text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-700"
+        >
+          ↻ 重新发送
+        </button>
+      )}
+      {!isUser && canRegenerate && (
         <button
           onClick={onRegenerate}
           title="重新生成这条回复"
@@ -124,10 +137,13 @@ export default function MessageBubble({
               </p>
             )
           ) : (
-            <p className="whitespace-pre-wrap break-words">
-              {showFloor && <span className="mr-1.5 opacity-40">{floor}</span>}
-              {message.content}
-            </p>
+            <>
+              <p className="whitespace-pre-wrap break-words">
+                {showFloor && <span className="mr-1.5 opacity-40">{floor}</span>}
+                {message.content}
+              </p>
+              {!streaming && actionBar}
+            </>
           )
         ) : thinking ? (
           <div className="flex items-center gap-1.5 py-0.5 text-neutral-400">

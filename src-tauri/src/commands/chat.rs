@@ -188,7 +188,63 @@ pub async fn regenerate(
     Ok(request_id)
 }
 
-/// 组流式任务配置并 spawn（send_message / regenerate 共用）
+/// 重新发送最后一条用户消息：截断其后所有消息，用相同内容重新发起流式请求。
+#[tauri::command]
+pub async fn resend_last(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    conversation_id: String,
+) -> Result<String, String> {
+    let request_id = Uuid::new_v4().to_string();
+
+    let (character, s, history, lore, cancel_rx) = {
+        let mut slot = state.chat.lock().unwrap();
+        if slot.is_some() {
+            return Err("已有生成中的回复，请先停止".into());
+        }
+        let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
+            let conn = state.db.lock().unwrap();
+            let conv = conversations::get_required(&conn, &conversation_id)?;
+            let character = characters::get_required(&conn, &conv.character_id)?;
+            let s = settings::get(&conn)?;
+            let all = messages::list(&conn, &conversation_id)?;
+            let last_user = all.iter().rev().find(|m| m.role == "user").cloned();
+            match last_user {
+                Some(u) => {
+                    // 截断该条及其后的所有消息，再以相同内容重新发送
+                    messages::delete_from_seq(&conn, &conversation_id, u.seq)?;
+                    messages::insert(&conn, &conversation_id, "user", &u.content)?;
+                }
+                None => {
+                    return Err(crate::error::AppError::other("没有可重新发送的用户消息"));
+                }
+            }
+            let history = messages::list(&conn, &conversation_id)?;
+            let lore = lore_for(&conn, &conv.character_id, &history)?;
+            Ok((character, s, history, lore))
+        })();
+        let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
+        let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+        *slot = Some(ActiveChat {
+            request_id: request_id.clone(),
+            cancel_tx,
+        });
+        (character, s, history, lore, cancel_rx)
+    };
+
+    let request_messages = build_request_messages(&character, &s, &history, &lore);
+    let body = build_body(&s, &request_messages);
+    let cfg = StreamConfig {
+        url: chat_url(&s.base_url),
+        api_key: s.api_key.clone(),
+        body,
+    };
+
+    spawn_stream_task(state.inner(), app, request_id.clone(), cancel_rx, cfg, conversation_id);
+    Ok(request_id)
+}
+
+/// 组流式任务配置并 spawn（send_message / regenerate / resend 共用）
 fn spawn_stream_task(
     state: &AppState,
     app: AppHandle,

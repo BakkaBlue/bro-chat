@@ -44,6 +44,15 @@ pub fn delete_by_id(conn: &Connection, id: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// 删除从指定 seq 开始的所有消息（重新发送用户消息时截断其后内容）
+pub fn delete_from_seq(conn: &Connection, conversation_id: &str, seq: i64) -> AppResult<()> {
+    conn.execute(
+        "DELETE FROM messages WHERE conversation_id = ?1 AND seq >= ?2",
+        params![conversation_id, seq],
+    )?;
+    Ok(())
+}
+
 /// 编辑消息内容
 pub fn update_content(conn: &Connection, id: &str, content: &str) -> AppResult<()> {
     conn.execute(

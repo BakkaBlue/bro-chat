@@ -211,3 +211,27 @@ fn rename_and_delete_conversation() {
     conversations::delete(&t.conn, &conv.id).unwrap();
     assert!(conversations::get(&t.conn, &conv.id).unwrap().is_none());
 }
+
+#[test]
+fn delete_from_seq_truncates_tail() {
+    let t = test_db();
+    let created = characters::create(&t.conn, &sample_input("截断")).unwrap();
+    let conv = conversations::create(&t.conn, &created.id, None).unwrap();
+    // 删掉开场白，从空开始
+    messages::delete_all(&t.conn, &conv.id).unwrap();
+    let u1 = messages::insert(&t.conn, &conv.id, "user", "第一问").unwrap();
+    messages::insert(&t.conn, &conv.id, "assistant", "第一答").unwrap();
+    let u2 = messages::insert(&t.conn, &conv.id, "user", "第二问").unwrap();
+    messages::insert(&t.conn, &conv.id, "assistant", "第二答").unwrap();
+
+    // 截断到 u2：u2 及其后全部删除
+    messages::delete_from_seq(&t.conn, &conv.id, u2.seq).unwrap();
+    let rest = messages::list(&t.conn, &conv.id).unwrap();
+    assert_eq!(rest.len(), 2);
+    assert_eq!(rest[0].content, "第一问");
+    assert_eq!(rest[1].content, "第一答");
+
+    // 截断到 u1（重新发送第一问的场景）：u1 起全部删除
+    messages::delete_from_seq(&t.conn, &conv.id, u1.seq).unwrap();
+    assert!(messages::list(&t.conn, &conv.id).unwrap().is_empty());
+}

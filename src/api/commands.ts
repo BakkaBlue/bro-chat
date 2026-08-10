@@ -55,6 +55,8 @@ export const cancelChat = (requestId: string) =>
   invoke<void>("cancel_chat", { requestId });
 export const regenerateReply = (conversationId: string) =>
   invoke<string>("regenerate", { conversationId });
+export const resendLastMessage = (conversationId: string) =>
+  invoke<string>("resend_last", { conversationId });
 
 // 设置
 export const getSettings = () => invoke<Settings>("get_settings");
