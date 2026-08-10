@@ -1,0 +1,33 @@
+[package]
+name = "brochat"
+version = "0.1.0"
+description = "个人 AI 聊天桌面应用"
+authors = ["BakkaBlue"]
+edition = "2021"
+
+[lib]
+name = "brochat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.11", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.13", features = ["json", "stream"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+futures-util = "0.3"
+base64 = "0.22"
+crc32fast = "1"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+
+[dev-dependencies]
+tempfile = "3"

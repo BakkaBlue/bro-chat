@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  font-family:
+    "Segoe UI",
+    "Microsoft YaHei",
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
