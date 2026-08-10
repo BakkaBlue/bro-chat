@@ -25,32 +25,32 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: linear-gradient(160deg, #e9edf4 0%, #dde4ee 45%, #e7e2ef 100%);
+  background: linear-gradient(165deg, #f1f3f7 0%, #e8ecf3 50%, #eee9f3 100%);
   background-size: cover;
   background-position: center;
 }
 .dark .bg-layer {
-  background: linear-gradient(160deg, #131518 0%, #181c22 45%, #1d1a26 100%);
+  background: linear-gradient(165deg, #16181c 0%, #1b1f26 50%, #221f2b 100%);
 }
 
-/* 背景高斯模糊：面板变半透明 + backdrop blur，透出背景层 */
+/* 背景高斯模糊：面板变半透明 + backdrop blur，透出背景层（保守透明度保证可读性） */
 .glass-blur aside,
 .glass-blur main {
-  background: rgb(245 245 245 / 0.72) !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgb(250 250 250 / 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .dark.glass-blur aside,
 .dark.glass-blur main {
-  background: rgb(23 23 23 / 0.7) !important;
+  background: rgb(28 28 30 / 0.85) !important;
 }
 .glass-blur .glass-panel {
-  background: rgb(255 255 255 / 0.85) !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgb(255 255 255 / 0.92) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .dark.glass-blur .glass-panel {
-  background: rgb(38 38 38 / 0.85) !important;
+  background: rgb(40 40 42 / 0.92) !important;
 }
 
 /* 减少动态效果：关闭全部动画与过渡 */
