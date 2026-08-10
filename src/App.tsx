@@ -137,9 +137,9 @@ export default function App() {
   const shell = (children: React.ReactNode) => (
     <div
       id="app-root"
-      className="relative grid h-screen grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+      className="relative grid h-full grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
     >
-      {/* 背景层（最底，模糊开关打开时透过毛玻璃面板可见） */}
+      {/* 背景层（fixed 覆盖视口，模糊开关打开时经半透明面板透出） */}
       <div
         className="bg-layer"
         style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
@@ -151,7 +151,7 @@ export default function App() {
   if (view === "settings") {
     return shell(
       <>
-        <div className="relative col-span-3 min-h-0 overflow-y-auto">
+        <div className="relative z-10 col-span-3 min-h-0 overflow-y-auto">
           <SettingsView />
         </div>
         <Toast />
@@ -161,13 +161,13 @@ export default function App() {
 
   return shell(
     <>
-      <div className="relative min-h-0">
+      <div className="relative z-10 min-h-0">
         <Sidebar />
       </div>
-      <div className="relative min-h-0">
+      <div className="relative z-10 min-h-0">
         <ConversationPanel />
       </div>
-      <div className="relative min-h-0">
+      <div className="relative z-10 min-h-0">
         <ChatPane />
       </div>
 
