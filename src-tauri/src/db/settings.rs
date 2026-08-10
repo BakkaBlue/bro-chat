@@ -25,6 +25,10 @@ pub fn get(conn: &Connection) -> AppResult<Settings> {
             "temperature" => parse_into(&v, &mut s.temperature),
             "max_tokens" => parse_into(&v, &mut s.max_tokens),
             "max_context_tokens" => parse_into(&v, &mut s.max_context_tokens),
+            "top_p" => parse_into(&v, &mut s.top_p),
+            "presence_penalty" => parse_into(&v, &mut s.presence_penalty),
+            "frequency_penalty" => parse_into(&v, &mut s.frequency_penalty),
+            "chat_auto_title" => parse_into(&v, &mut s.chat_auto_title),
             "ui_font_size" => parse_into(&v, &mut s.ui_font_size),
             "chat_load_messages" => parse_into(&v, &mut s.chat_load_messages),
             "ui_show_timestamps" => parse_into(&v, &mut s.ui_show_timestamps),
@@ -59,7 +63,7 @@ fn parse_into<T: serde::de::DeserializeOwned>(v: &str, target: &mut T) {
 
 /// 整体 upsert 全部设置键。
 pub fn update(conn: &Connection, s: &Settings) -> AppResult<()> {
-    let entries: [(&str, String); 31] = [
+    let entries: [(&str, String); 35] = [
         ("base_url", s.base_url.clone()),
         ("api_key", s.api_key.clone()),
         ("model", s.model.clone()),
@@ -70,6 +74,10 @@ pub fn update(conn: &Connection, s: &Settings) -> AppResult<()> {
             "max_context_tokens",
             serde_json::to_string(&s.max_context_tokens)?,
         ),
+        ("top_p", serde_json::to_string(&s.top_p)?),
+        ("presence_penalty", serde_json::to_string(&s.presence_penalty)?),
+        ("frequency_penalty", serde_json::to_string(&s.frequency_penalty)?),
+        ("chat_auto_title", serde_json::to_string(&s.chat_auto_title)?),
         ("ui_theme", s.ui_theme.clone()),
         ("ui_font_size", serde_json::to_string(&s.ui_font_size)?),
         ("ui_avatar_style", s.ui_avatar_style.clone()),

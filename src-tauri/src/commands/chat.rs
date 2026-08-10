@@ -96,13 +96,13 @@ pub async fn send_message(
             let s = settings::get(&tx)?;
             messages::insert(&tx, &conversation_id, "user", &content)?;
             let history = messages::list(&tx, &conversation_id)?;
-            // 第一条用户消息自动生成标题
+            // 首条用户消息自动生成标题（可设置关闭）
             let user_count: i64 = tx.query_row(
                 "SELECT COUNT(*) FROM messages WHERE conversation_id = ?1 AND role = 'user'",
                 rusqlite::params![conversation_id],
                 |r| r.get(0),
             )?;
-            if user_count == 1 {
+            if s.chat_auto_title && user_count == 1 {
                 let title: String = content.chars().take(24).collect::<String>()
                     + if content.chars().count() > 24 { "…" } else { "" };
                 conversations::rename_if_untitled(&tx, &conversation_id, &title)?;

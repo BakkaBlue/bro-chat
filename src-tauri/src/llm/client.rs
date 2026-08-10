@@ -117,6 +117,9 @@ pub fn build_body(settings: &Settings, messages: &[Msg]) -> serde_json::Value {
         "messages": msgs,
         "stream": true,
         "temperature": settings.temperature,
+        "top_p": settings.top_p,
+        "presence_penalty": settings.presence_penalty,
+        "frequency_penalty": settings.frequency_penalty,
     });
     if prefer_max_completion_tokens(&settings.model) {
         body["max_completion_tokens"] = json!(settings.max_tokens);

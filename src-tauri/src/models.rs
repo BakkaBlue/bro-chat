@@ -108,6 +108,18 @@ pub struct Settings {
     pub max_tokens: i64,
     #[serde(default = "Settings::default_max_context_tokens")]
     pub max_context_tokens: i64,
+    /// 核采样（0-1，1 = 关闭）
+    #[serde(default = "Settings::default_top_p")]
+    pub top_p: f64,
+    /// 话题新鲜度惩罚（-2 ~ 2）
+    #[serde(default)]
+    pub presence_penalty: f64,
+    /// 重复惩罚（-2 ~ 2）
+    #[serde(default)]
+    pub frequency_penalty: f64,
+    /// 首条用户消息后自动命名对话
+    #[serde(default = "Settings::default_true")]
+    pub chat_auto_title: bool,
     #[serde(default)]
     pub system_prompt: String,
     /// 界面主题：system | light | dark
@@ -181,6 +193,10 @@ impl Default for Settings {
             temperature: Self::default_temperature(),
             max_tokens: Self::default_max_tokens(),
             max_context_tokens: Self::default_max_context_tokens(),
+            top_p: Self::default_top_p(),
+            presence_penalty: 0.0,
+            frequency_penalty: 0.0,
+            chat_auto_title: Self::default_true(),
             system_prompt: String::new(),
             ui_theme: Self::default_ui_theme(),
             ui_font_size: Self::default_ui_font_size(),
@@ -237,6 +253,9 @@ impl Settings {
     }
     pub fn default_load_messages() -> i64 {
         100
+    }
+    pub fn default_top_p() -> f64 {
+        1.0
     }
 }
 

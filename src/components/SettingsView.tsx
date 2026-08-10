@@ -63,9 +63,59 @@ function SegBtn({
   );
 }
 
-type Tab = "model" | "appearance" | "characters" | "misc" | "chat" | "enter" | "auto";
+// 滑杆 + 数字联动输入
+function NumField({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label className={labelCls}>{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="flex-1 accent-neutral-800 dark:accent-neutral-200"
+        />
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            onChange(isNaN(v) ? min : Math.min(max, Math.max(min, v)));
+          }}
+          className={`${inputCls} w-20`}
+        />
+      </div>
+      {hint && <p className="mt-1 text-[10px] text-neutral-400">{hint}</p>}
+    </div>
+  );
+}
+
+type Tab = "model" | "generate" | "appearance" | "characters" | "misc" | "chat" | "enter" | "auto";
 const TABS: [Tab, string][] = [
   ["model", "模型连接"],
+  ["generate", "生成参数"],
   ["appearance", "UI 主题"],
   ["characters", "角色处理"],
   ["misc", "杂项"],
@@ -217,6 +267,79 @@ export default function SettingsView() {
               </p>
             </div>
           </>
+        )}
+
+        {tab === "generate" && (
+          <div className="flex flex-col gap-4">
+            <NumField
+              label="温度（Temperature）"
+              hint="越高回复越自由发散，越低越稳定保守"
+              value={form.temperature}
+              min={0}
+              max={2}
+              step={0.05}
+              onChange={(v) => set("temperature", v)}
+            />
+            <NumField
+              label="Top P（核采样）"
+              hint="按概率累计截断采样；1 = 关闭"
+              value={form.top_p}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => set("top_p", v)}
+            />
+            <NumField
+              label="存在惩罚（Presence Penalty）"
+              hint="正值鼓励谈论新话题，负值更专注当前话题"
+              value={form.presence_penalty}
+              min={-2}
+              max={2}
+              step={0.1}
+              onChange={(v) => set("presence_penalty", v)}
+            />
+            <NumField
+              label="频率惩罚（Frequency Penalty）"
+              hint="正值抑制重复用词"
+              value={form.frequency_penalty}
+              min={-2}
+              max={2}
+              step={0.1}
+              onChange={(v) => set("frequency_penalty", v)}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>单次回复最大 token</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.max_tokens}
+                  onChange={(e) => set("max_tokens", parseInt(e.target.value) || 1)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>上下文窗口 token（超出裁剪旧消息）</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.max_context_tokens}
+                  onChange={(e) => set("max_context_tokens", parseInt(e.target.value) || 1)}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>默认系统提示词（角色可单独覆盖）</label>
+              <textarea
+                value={form.system_prompt}
+                onChange={(e) => set("system_prompt", e.target.value)}
+                rows={5}
+                className={`${inputCls} resize-y`}
+                placeholder="例如：你是一个乐于助人的助手，用简体中文回答。"
+              />
+            </div>
+          </div>
         )}
 
         {tab === "appearance" && (
@@ -392,6 +515,12 @@ export default function SettingsView() {
                 className={`${inputCls} w-32`}
               />
             </div>
+            <Toggle
+              label="首条消息后自动命名对话"
+              hint="发送第一条用户消息时用消息开头做标题"
+              checked={form.chat_auto_title}
+              onChange={(v) => set("chat_auto_title", v)}
+            />
             <Toggle
               label="自动滚动聊天"
               hint="新消息自动滚到底部，手动上滚后暂停"
