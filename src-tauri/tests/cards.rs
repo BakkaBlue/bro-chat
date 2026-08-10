@@ -89,7 +89,7 @@ fn v2_card_roundtrip_through_db() {
     let created = characters::create(&conn, &input).unwrap();
     let fetched = characters::get(&conn, &created.id).unwrap().unwrap();
     let mut data = spec::CharaData::default();
-    spec::apply_to_card(&fetched, &mut data);
+    spec::apply_to_card(&fetched, &mut data, None);
     let re_parsed = spec::parse_json(&spec::serialize_v2(&data)).unwrap();
     assert_eq!(re_parsed, parsed);
 }
@@ -127,7 +127,7 @@ fn first_messages_roundtrip_with_alternates() {
     let fetched = characters::get(&conn, &created.id).unwrap().unwrap();
 
     let mut data = spec::CharaData::default();
-    spec::apply_to_card(&fetched, &mut data);
+    spec::apply_to_card(&fetched, &mut data, None);
     assert_eq!(data.first_mes, "这么晚了还来？只剩吧台的位置了。");
     assert_eq!(
         data.alternate_greetings,
@@ -159,7 +159,7 @@ fn png_card_import_export_roundtrip() {
     let created = characters::create(&conn, &input).unwrap();
     let fetched = characters::get(&conn, &created.id).unwrap().unwrap();
     let export_path = tmp.path().join("export.png");
-    io::write_card(&export_path, &fetched).unwrap();
+    io::write_card(&export_path, &fetched, None).unwrap();
 
     // 再读回来：数据一致，头像与首次导入字节一致（chara 跳过不叠加）
     let (data2, avatar2) = io::read_card(&export_path).unwrap();
@@ -178,7 +178,7 @@ fn json_card_write_and_read() {
     let fetched = characters::get(&conn, &created.id).unwrap().unwrap();
 
     let path = tmp.path().join("林晓.json");
-    io::write_card(&path, &fetched).unwrap();
+    io::write_card(&path, &fetched, None).unwrap();
     let (data, avatar) = io::read_card(&path).unwrap();
     assert!(avatar.is_none());
     assert_eq!(data, parsed);
@@ -219,8 +219,8 @@ fn export_png_requires_png_avatar() {
     let fetched = characters::get(&conn, &created.id).unwrap().unwrap();
 
     let png_path = tmp.path().join("out.png");
-    assert!(io::write_card(&png_path, &fetched).is_err());
+    assert!(io::write_card(&png_path, &fetched, None).is_err());
 
     let json_path = tmp.path().join("out.json");
-    io::write_card(&json_path, &fetched).unwrap();
+    io::write_card(&json_path, &fetched, None).unwrap();
 }

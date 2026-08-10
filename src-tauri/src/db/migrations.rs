@@ -43,6 +43,38 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 ";
 
+const MIGRATION_2: &str = "
+CREATE TABLE IF NOT EXISTS lorebooks (
+  id                TEXT PRIMARY KEY,
+  character_id      TEXT NOT NULL UNIQUE REFERENCES characters(id) ON DELETE CASCADE,
+  name              TEXT NOT NULL DEFAULT '',
+  description       TEXT NOT NULL DEFAULT '',
+  scan_depth        INTEGER NOT NULL DEFAULT 4,
+  token_budget      INTEGER NOT NULL DEFAULT 500,
+  recursive_scanning INTEGER NOT NULL DEFAULT 0,
+  enabled           INTEGER NOT NULL DEFAULT 1,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lore_entries (
+  id               TEXT PRIMARY KEY,
+  lorebook_id      TEXT NOT NULL REFERENCES lorebooks(id) ON DELETE CASCADE,
+  keys             TEXT NOT NULL DEFAULT '[]',
+  secondary_keys   TEXT NOT NULL DEFAULT '[]',
+  comment          TEXT NOT NULL DEFAULT '',
+  content          TEXT NOT NULL DEFAULT '',
+  constant         INTEGER NOT NULL DEFAULT 0,
+  selective        INTEGER NOT NULL DEFAULT 0,
+  insertion_order  INTEGER NOT NULL DEFAULT 0,
+  enabled          INTEGER NOT NULL DEFAULT 1,
+  position         TEXT NOT NULL DEFAULT 'before_char',
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_lore_entries_book ON lore_entries(lorebook_id);
+";
+
 /// 版本化迁移：PRAGMA user_version 控制，每个版本在事务内应用。
 pub fn migrate(conn: &mut Connection) -> Result<(), rusqlite::Error> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
@@ -50,6 +82,12 @@ pub fn migrate(conn: &mut Connection) -> Result<(), rusqlite::Error> {
         let tx = conn.transaction()?;
         tx.execute_batch(MIGRATION_1)?;
         tx.pragma_update(None, "user_version", 1)?;
+        tx.commit()?;
+    }
+    if version < 2 {
+        let tx = conn.transaction()?;
+        tx.execute_batch(MIGRATION_2)?;
+        tx.pragma_update(None, "user_version", 2)?;
         tx.commit()?;
     }
     Ok(())

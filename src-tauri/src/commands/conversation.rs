@@ -19,9 +19,10 @@ pub fn list_conversations(
 pub fn create_conversation(
     state: State<AppState>,
     character_id: String,
+    greeting_index: Option<usize>,
 ) -> Result<ConversationSummary, String> {
     with_db(&state, |conn| {
-        let conv = conversations::create(conn, &character_id)?;
+        let conv = conversations::create(conn, &character_id, greeting_index)?;
         let list = conversations::list_by_character(conn, &character_id)?;
         list.into_iter()
             .find(|c| c.id == conv.id)

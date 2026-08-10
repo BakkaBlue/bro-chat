@@ -12,12 +12,29 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::db::{characters, conversations, messages, settings};
+use crate::db::{characters, conversations, lorebooks, messages, settings};
 use crate::error::AppResult;
 use crate::llm::client::{build_body, build_request_messages, chat_url};
+use crate::llm::lorebook::{LoreInjection, build_lore_injection, scan_text_from};
 use crate::llm::stream::{StreamConfig, stream_chat};
 use crate::models::{Character, Message, Settings};
 use crate::state::{ActiveChat, AppState};
+
+/// 计算世界书注入：启用且有条目时按扫描深度取文本、按预算注入
+fn lore_for(
+    conn: &rusqlite::Connection,
+    character_id: &str,
+    history: &[Message],
+) -> AppResult<LoreInjection> {
+    let book = lorebooks::get_by_character(conn, character_id)?;
+    Ok(match book {
+        Some(b) if b.enabled && !b.entries.is_empty() => {
+            let scan_text = scan_text_from(history, b.scan_depth as usize);
+            build_lore_injection(&b.entries, &scan_text, b.token_budget as usize)
+        }
+        _ => LoreInjection::default(),
+    })
+}
 
 // 事件 payload 统一 camelCase，与前端 api/events.ts 类型一致
 #[derive(Clone, Serialize)]
@@ -66,12 +83,12 @@ pub async fn send_message(
     let request_id = Uuid::new_v4().to_string();
 
     // 单飞检查 + 数据快照在同一个锁区（同步段无 await，无竞争窗口）
-    let (character, s, history, cancel_rx) = {
+    let (character, s, history, lore, cancel_rx) = {
         let mut slot = state.chat.lock().unwrap();
         if slot.is_some() {
             return Err("已有生成中的回复，请先停止".into());
         }
-        let snapshot: AppResult<(Character, Settings, Vec<Message>)> = (|| {
+        let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
             let conn = state.db.lock().unwrap();
             let conv = conversations::get_required(&conn, &conversation_id)?;
             let character = characters::get_required(&conn, &conv.character_id)?;
@@ -89,18 +106,19 @@ pub async fn send_message(
                     + if content.chars().count() > 24 { "…" } else { "" };
                 conversations::rename_if_untitled(&conn, &conversation_id, &title)?;
             }
-            Ok((character, s, history))
+            let lore = lore_for(&conn, &conv.character_id, &history)?;
+            Ok((character, s, history, lore))
         })();
-        let (character, s, history) = snapshot.map_err(|e| e.to_string())?;
+        let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         *slot = Some(ActiveChat {
             request_id: request_id.clone(),
             cancel_tx,
         });
-        (character, s, history, cancel_rx)
+        (character, s, history, lore, cancel_rx)
     };
 
-    let request_messages = build_request_messages(&character, &s, &history);
+    let request_messages = build_request_messages(&character, &s, &history, &lore);
     let body = build_body(&s, &request_messages);
     let cfg = StreamConfig {
         url: chat_url(&s.base_url),
@@ -122,12 +140,12 @@ pub async fn regenerate(
 ) -> Result<String, String> {
     let request_id = Uuid::new_v4().to_string();
 
-    let (character, s, history, cancel_rx) = {
+    let (character, s, history, lore, cancel_rx) = {
         let mut slot = state.chat.lock().unwrap();
         if slot.is_some() {
             return Err("已有生成中的回复，请先停止".into());
         }
-        let snapshot: AppResult<(Character, Settings, Vec<Message>)> = (|| {
+        let snapshot: AppResult<(Character, Settings, Vec<Message>, LoreInjection)> = (|| {
             let conn = state.db.lock().unwrap();
             let conv = conversations::get_required(&conn, &conversation_id)?;
             let character = characters::get_required(&conn, &conv.character_id)?;
@@ -139,18 +157,19 @@ pub async fn regenerate(
                     history.pop();
                 }
             }
-            Ok((character, s, history))
+            let lore = lore_for(&conn, &conv.character_id, &history)?;
+            Ok((character, s, history, lore))
         })();
-        let (character, s, history) = snapshot.map_err(|e| e.to_string())?;
+        let (character, s, history, lore) = snapshot.map_err(|e| e.to_string())?;
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
         *slot = Some(ActiveChat {
             request_id: request_id.clone(),
             cancel_tx,
         });
-        (character, s, history, cancel_rx)
+        (character, s, history, lore, cancel_rx)
     };
 
-    let request_messages = build_request_messages(&character, &s, &history);
+    let request_messages = build_request_messages(&character, &s, &history, &lore);
     let body = build_body(&s, &request_messages);
     let cfg = StreamConfig {
         url: chat_url(&s.base_url),

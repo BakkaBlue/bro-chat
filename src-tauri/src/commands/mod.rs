@@ -6,6 +6,7 @@ use crate::state::AppState;
 pub mod character;
 pub mod chat;
 pub mod conversation;
+pub mod lorebook;
 pub mod settings;
 
 /// 锁库并执行数据层函数，错误转为给前端的中文消息

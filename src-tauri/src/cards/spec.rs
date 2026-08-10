@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::{Character, CharacterInput};
+use crate::models::{Character, CharacterInput, Lorebook, LorebookInput, LoreEntryInput};
 
 const EXTRA_KEY: &str = "_v2_extra";
 
@@ -142,8 +142,9 @@ pub fn card_to_input(data: &CharaData) -> CharacterInput {
     }
 }
 
-/// 角色 → CharaData（导出用），还原 extensions 列里的未建模字段
-pub fn apply_to_card(c: &Character, data: &mut CharaData) {
+/// 角色 → CharaData（导出用），还原 extensions 列里的未建模字段。
+/// 有世界书时用当前世界书覆盖 character_book（保证导出是最新的）。
+pub fn apply_to_card(c: &Character, data: &mut CharaData, lorebook: Option<&Lorebook>) {
     data.name = c.name.clone();
     data.description = c.description.clone();
     data.personality = c.personality.clone();
@@ -174,6 +175,76 @@ pub fn apply_to_card(c: &Character, data: &mut CharaData) {
         }
         data.extensions = Some(serde_json::Value::Object(rest));
     }
+
+    // 有世界书 → 用最新世界书覆盖 character_book
+    if let Some(book) = lorebook {
+        data.character_book = Some(lorebook_to_character_book(book));
+    }
+}
+
+/// ST character_book（PNG 卡内嵌 / 独立世界书文件）→ 世界书输入（导入用）
+pub fn character_book_to_lore_input(v: &serde_json::Value) -> Option<LorebookInput> {
+    let entries: Vec<LoreEntryInput> = v["entries"]
+        .as_array()?
+        .iter()
+        .map(|e| LoreEntryInput {
+            keys: str_array(&e["keys"]),
+            secondary_keys: str_array(&e["secondary_keys"]),
+            comment: e["comment"].as_str().unwrap_or("").to_string(),
+            content: e["content"].as_str().unwrap_or("").to_string(),
+            constant: e["constant"].as_bool().unwrap_or(false),
+            selective: e["selective"].as_bool().unwrap_or(false),
+            insertion_order: e["insertion_order"].as_i64().unwrap_or(0),
+            enabled: e["enabled"].as_bool().unwrap_or(true),
+            position: e["position"]
+                .as_str()
+                .unwrap_or("before_char")
+                .to_string(),
+        })
+        .collect();
+    Some(LorebookInput {
+        name: v["name"].as_str().unwrap_or("世界书").to_string(),
+        description: v["description"].as_str().unwrap_or("").to_string(),
+        scan_depth: v["scan_depth"].as_i64().unwrap_or(4),
+        token_budget: v["token_budget"].as_i64().unwrap_or(500),
+        recursive_scanning: v["recursive_scanning"].as_bool().unwrap_or(false),
+        enabled: true,
+        entries,
+    })
+}
+
+/// 世界书 → ST character_book（导出用，保证再导回酒馆可读）
+pub fn lorebook_to_character_book(book: &Lorebook) -> serde_json::Value {
+    serde_json::json!({
+        "name": book.name,
+        "description": book.description,
+        "scan_depth": book.scan_depth,
+        "token_budget": book.token_budget,
+        "recursive_scanning": book.recursive_scanning,
+        "extensions": {},
+        "entries": book.entries.iter().map(|e| serde_json::json!({
+            "keys": e.keys,
+            "secondary_keys": e.secondary_keys,
+            "comment": e.comment,
+            "content": e.content,
+            "constant": e.constant,
+            "selective": e.selective,
+            "insertion_order": e.insertion_order,
+            "enabled": e.enabled,
+            "position": e.position,
+            "extensions": {}
+        })).collect::<Vec<_>>()
+    })
+}
+
+fn str_array(v: &serde_json::Value) -> Vec<String> {
+    v.as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.as_str().map(|x| x.to_string()))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// 以 v2 包装序列化卡片（PNG 嵌入与 JSON 导出共用）

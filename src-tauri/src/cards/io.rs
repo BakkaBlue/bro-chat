@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::avatar;
 use crate::error::{AppError, AppResult};
-use crate::models::Character;
+use crate::models::{Character, Lorebook};
 
 use super::png_chunks;
 use super::spec::{self, CharaData};
@@ -42,10 +42,10 @@ pub fn read_card(path: &Path) -> AppResult<(CharaData, Option<Vec<u8>>)> {
 }
 
 /// 写入角色卡文件。导出 PNG 需要角色的 PNG 头像（chara 嵌入 tEXt），
-/// 无 PNG 头像时导出 JSON。
-pub fn write_card(path: &Path, c: &Character) -> AppResult<()> {
+/// 无 PNG 头像时导出 JSON。有世界书时嵌入最新内容。
+pub fn write_card(path: &Path, c: &Character, lorebook: Option<&Lorebook>) -> AppResult<()> {
     let mut data = CharaData::default();
-    spec::apply_to_card(c, &mut data);
+    spec::apply_to_card(c, &mut data, lorebook);
     let json = spec::serialize_v2(&data);
     match extension(path)?.as_str() {
         "png" => {

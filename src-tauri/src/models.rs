@@ -155,3 +155,92 @@ impl Settings {
         13
     }
 }
+
+// ---------- 世界书（lorebook） ----------
+
+/// 世界书：一个角色一本（character_id 唯一），含条目列表
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Lorebook {
+    pub id: String,
+    pub character_id: String,
+    pub name: String,
+    pub description: String,
+    /// 关键词扫描的历史消息深度（条数）
+    pub scan_depth: i64,
+    /// 单轮注入的 token 预算
+    pub token_budget: i64,
+    pub recursive_scanning: bool,
+    pub enabled: bool,
+    pub entries: Vec<LoreEntry>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// 世界书条目（对应 ST character_book.entries 结构）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoreEntry {
+    pub id: String,
+    pub keys: Vec<String>,
+    pub secondary_keys: Vec<String>,
+    pub comment: String,
+    pub content: String,
+    /// 常驻：无条件注入
+    pub constant: bool,
+    /// 需要主关键词 + 副关键词同时命中才激活
+    pub selective: bool,
+    /// 注入顺序（小在前）
+    pub insertion_order: i64,
+    pub enabled: bool,
+    /// before_char | after_char
+    pub position: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// 保存世界书的输入（整书替换）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LorebookInput {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default = "default_scan_depth")]
+    pub scan_depth: i64,
+    #[serde(default = "default_token_budget")]
+    pub token_budget: i64,
+    #[serde(default)]
+    pub recursive_scanning: bool,
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub entries: Vec<LoreEntryInput>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoreEntryInput {
+    #[serde(default)]
+    pub keys: Vec<String>,
+    #[serde(default)]
+    pub secondary_keys: Vec<String>,
+    #[serde(default)]
+    pub comment: String,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub constant: bool,
+    #[serde(default)]
+    pub selective: bool,
+    #[serde(default)]
+    pub insertion_order: i64,
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub position: String,
+}
+
+pub fn default_scan_depth() -> i64 {
+    4
+}
+pub fn default_token_budget() -> i64 {
+    500
+}

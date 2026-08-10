@@ -4,7 +4,7 @@ use tauri::State;
 
 use crate::avatar;
 use crate::cards;
-use crate::db::characters;
+use crate::db::{characters, lorebooks};
 use crate::models::{Character, CharacterInput, CharacterSummary};
 use crate::state::AppState;
 
@@ -48,7 +48,14 @@ pub fn import_card(state: State<AppState>, path: String) -> Result<Character, St
         let (data, avatar_bytes) = cards::io::read_card(Path::new(&path))?;
         let mut input = cards::spec::card_to_input(&data);
         input.avatar = avatar_bytes.map(|b| avatar::encode(&b));
-        characters::create(conn, &input)
+        let character = characters::create(conn, &input)?;
+        // 卡片内嵌世界书 → 导入为角色世界书
+        if let Some(book) = data.character_book.as_ref() {
+            if let Some(lore_input) = cards::spec::character_book_to_lore_input(book) {
+                lorebooks::save(conn, &character.id, &lore_input)?;
+            }
+        }
+        Ok(character)
     })
 }
 
@@ -56,6 +63,7 @@ pub fn import_card(state: State<AppState>, path: String) -> Result<Character, St
 pub fn export_card(state: State<AppState>, id: String, path: String) -> Result<(), String> {
     with_db(&state, |conn| {
         let c = characters::get_required(conn, &id)?;
-        cards::io::write_card(Path::new(&path), &c)
+        let lorebook = lorebooks::get_by_character(conn, &id)?;
+        cards::io::write_card(Path::new(&path), &c, lorebook.as_ref())
     })
 }

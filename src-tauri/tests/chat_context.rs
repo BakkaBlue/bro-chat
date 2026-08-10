@@ -28,7 +28,7 @@ fn char_input() -> CharacterInput {
 fn three_hundred_messages_stay_within_budget() {
     let conn = setup();
     let c = characters::create(&conn, &char_input()).unwrap();
-    let conv = conversations::create(&conn, &c.id).unwrap();
+    let conv = conversations::create(&conn, &c.id, None).unwrap();
 
     // 150 轮完整对话（300 条）+ 最后一条用户消息（模拟 send_message 的真实流程）
     for i in 0..150 {
@@ -46,7 +46,7 @@ fn three_hundred_messages_stay_within_budget() {
         max_context_tokens: 800,
         ..Default::default()
     };
-    let msgs = build_request_messages(&c, &s, &history);
+    let msgs = build_request_messages(&c, &s, &history, &brochat_lib::llm::lorebook::LoreInjection::default());
 
     // 系统提示词始终在
     assert!(msgs.iter().any(|m| m.role == "system"));
@@ -79,7 +79,7 @@ fn three_hundred_messages_stay_within_budget() {
 fn big_budget_keeps_everything() {
     let conn = setup();
     let c = characters::create(&conn, &char_input()).unwrap();
-    let conv = conversations::create(&conn, &c.id).unwrap();
+    let conv = conversations::create(&conn, &c.id, None).unwrap();
     for i in 0..150 {
         messages::insert(&conn, &conv.id, "user", &format!("问题 {i}")).unwrap();
         messages::insert(&conn, &conv.id, "assistant", &format!("回答 {i}")).unwrap();
@@ -89,7 +89,7 @@ fn big_budget_keeps_everything() {
         max_context_tokens: 10_000_000,
         ..Default::default()
     };
-    let msgs = build_request_messages(&c, &s, &history);
+    let msgs = build_request_messages(&c, &s, &history, &brochat_lib::llm::lorebook::LoreInjection::default());
     // system + 300 条历史
     assert_eq!(msgs.len(), 301);
 }
@@ -98,10 +98,10 @@ fn big_budget_keeps_everything() {
 fn empty_history_only_system() {
     let conn = setup();
     let c = characters::create(&conn, &char_input()).unwrap();
-    let conv = conversations::create(&conn, &c.id).unwrap();
+    let conv = conversations::create(&conn, &c.id, None).unwrap();
     let history = messages::list(&conn, &conv.id).unwrap();
     let s = Settings::default();
-    let msgs = build_request_messages(&c, &s, &history);
+    let msgs = build_request_messages(&c, &s, &history, &brochat_lib::llm::lorebook::LoreInjection::default());
     // 无消息时只有 system（角色有自定义提示词）
     assert_eq!(msgs.len(), 1);
     assert_eq!(msgs[0].role, "system");
@@ -111,7 +111,7 @@ fn empty_history_only_system() {
 fn zero_budget_keeps_newest_user_only() {
     let conn = setup();
     let c = characters::create(&conn, &char_input()).unwrap();
-    let conv = conversations::create(&conn, &c.id).unwrap();
+    let conv = conversations::create(&conn, &c.id, None).unwrap();
     messages::insert(&conn, &conv.id, "user", "旧问题").unwrap();
     messages::insert(&conn, &conv.id, "assistant", "旧回答").unwrap();
     messages::insert(&conn, &conv.id, "user", "新问题").unwrap();
@@ -120,7 +120,7 @@ fn zero_budget_keeps_newest_user_only() {
         max_context_tokens: 0,
         ..Default::default()
     };
-    let msgs = build_request_messages(&c, &s, &history);
+    let msgs = build_request_messages(&c, &s, &history, &brochat_lib::llm::lorebook::LoreInjection::default());
     assert_eq!(msgs.len(), 2); // system + 最新 user
     assert_eq!(msgs[1].content, "新问题");
 }

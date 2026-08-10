@@ -1,5 +1,6 @@
 pub mod characters;
 pub mod conversations;
+pub mod lorebooks;
 pub mod messages;
 pub mod migrations;
 pub mod settings;

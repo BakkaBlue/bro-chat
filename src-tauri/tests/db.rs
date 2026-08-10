@@ -44,14 +44,14 @@ fn migration_is_idempotent_and_sets_version() {
         let v: i64 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(v, 1);
+        assert_eq!(v, 2);
     }
     // 再次打开：迁移必须幂等
     let conn = db::init_conn(&path).unwrap();
     let v: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(v, 1);
+    assert_eq!(v, 2);
     // WAL 生效
     let mode: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
@@ -106,7 +106,7 @@ fn character_crud_roundtrip() {
 fn delete_character_cascades_conversations_and_messages() {
     let t = test_db();
     let created = characters::create(&t.conn, &sample_input("级联测试")).unwrap();
-    let conv = conversations::create(&t.conn, &created.id).unwrap();
+    let conv = conversations::create(&t.conn, &created.id, None).unwrap();
     // 创建时已插入开场白；再补一条
     messages::insert(&t.conn, &conv.id, "user", "你好").unwrap();
 
@@ -123,7 +123,7 @@ fn message_seq_strictly_increasing() {
     let mut input = sample_input("seq");
     input.first_messages = vec![];
     let created = characters::create(&t.conn, &input).unwrap();
-    let conv = conversations::create(&t.conn, &created.id).unwrap();
+    let conv = conversations::create(&t.conn, &created.id, None).unwrap();
     let mut seqs = Vec::new();
     for i in 0..10 {
         let m = messages::insert(&t.conn, &conv.id, if i % 2 == 0 { "user" } else { "assistant" }, &format!("消息{i}")).unwrap();
@@ -179,7 +179,7 @@ fn settings_defaults_and_upsert() {
 fn conversation_gets_greeting_on_create() {
     let t = test_db();
     let created = characters::create(&t.conn, &sample_input("开场")).unwrap();
-    let conv = conversations::create(&t.conn, &created.id).unwrap();
+    let conv = conversations::create(&t.conn, &created.id, None).unwrap();
     let msgs = messages::list(&t.conn, &conv.id).unwrap();
     assert_eq!(msgs.len(), 1);
     assert_eq!(msgs[0].role, "assistant");
@@ -189,7 +189,7 @@ fn conversation_gets_greeting_on_create() {
     let mut no_first = sample_input("无开场");
     no_first.first_messages = vec![];
     let c2 = characters::create(&t.conn, &no_first).unwrap();
-    let conv2 = conversations::create(&t.conn, &c2.id).unwrap();
+    let conv2 = conversations::create(&t.conn, &c2.id, None).unwrap();
     assert!(messages::list(&t.conn, &conv2.id).unwrap().is_empty());
 
     // 对话列表带消息数
@@ -202,7 +202,7 @@ fn conversation_gets_greeting_on_create() {
 fn rename_and_delete_conversation() {
     let t = test_db();
     let created = characters::create(&t.conn, &sample_input("改名")).unwrap();
-    let conv = conversations::create(&t.conn, &created.id).unwrap();
+    let conv = conversations::create(&t.conn, &created.id, None).unwrap();
     conversations::rename(&t.conn, &conv.id, "深夜闲聊").unwrap();
     let got = conversations::get(&t.conn, &conv.id).unwrap().unwrap();
     assert_eq!(got.title, "深夜闲聊");

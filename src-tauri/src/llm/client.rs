@@ -3,6 +3,7 @@
 use serde_json::json;
 
 use crate::llm::context::{Msg, substitute_tokens};
+use crate::llm::lorebook::LoreInjection;
 use crate::models::{Character, Message, Settings};
 
 /// base_url 规范化，自动识别并补齐后缀：
@@ -43,13 +44,14 @@ fn prefer_max_completion_tokens(model: &str) -> bool {
 }
 
 /// 组装发给模型的消息数组：
-/// - system：角色自定义提示词（或全局默认）+ 描述/性格/场景/示例对话块
+/// - system：角色自定义提示词（或全局默认）+ 世界书注入 + 描述/性格/场景/示例对话块
 /// - 历史：DB 里的全部消息，经 trim_history 裁剪（含刚插入的最新 user 消息）
 /// - 全部内容做 {{user}}/{{char}} 令牌替换
 pub fn build_request_messages(
     character: &Character,
     settings: &Settings,
     history: &[Message],
+    lore: &LoreInjection,
 ) -> Vec<Msg> {
     let mut system_parts: Vec<String> = Vec::new();
     let base = character
@@ -60,6 +62,10 @@ pub fn build_request_messages(
     if !base.trim().is_empty() {
         system_parts.push(base.trim().to_string());
     }
+    // 世界书：before_char 条目插在角色设定前
+    for text in &lore.before_char {
+        system_parts.push(format!("【世界设定】\n{text}"));
+    }
     if !character.description.trim().is_empty() {
         system_parts.push(format!("【角色设定·描述】\n{}", character.description.trim()));
     }
@@ -68,6 +74,10 @@ pub fn build_request_messages(
     }
     if !character.scenario.trim().is_empty() {
         system_parts.push(format!("【角色设定·场景】\n{}", character.scenario.trim()));
+    }
+    // 世界书：after_char 条目插在角色设定后、示例对话前
+    for text in &lore.after_char {
+        system_parts.push(format!("【世界设定】\n{text}"));
     }
     if !character.example_messages.trim().is_empty() {
         system_parts.push(format!("【示例对话】\n{}", character.example_messages.trim()));
@@ -267,7 +277,7 @@ mod tests {
             },
         ];
         let s = Settings::default();
-        let msgs = build_request_messages(&c, &s, &history);
+        let msgs = build_request_messages(&c, &s, &history, &super::super::lorebook::LoreInjection::default());
         assert_eq!(msgs[0].role, "system");
         let sys = &msgs[0].content;
         assert!(sys.contains("林晓：示例对话"), "示例对话应替换 {{char}}");

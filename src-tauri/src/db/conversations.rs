@@ -36,8 +36,12 @@ pub fn list_by_character(
     Ok(out)
 }
 
-/// 创建对话。若角色有开场白，第一条自动作为 assistant 消息插入。
-pub fn create(conn: &Connection, character_id: &str) -> AppResult<Conversation> {
+/// 创建对话。有开场白时按下标取一条（None = 第一条）作为 assistant 开场消息。
+pub fn create(
+    conn: &Connection,
+    character_id: &str,
+    greeting_index: Option<usize>,
+) -> AppResult<Conversation> {
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
     conn.execute(
@@ -45,11 +49,14 @@ pub fn create(conn: &Connection, character_id: &str) -> AppResult<Conversation> 
          VALUES (?1, ?2, '新对话', ?3, ?3)",
         params![id, character_id, now],
     )?;
-    let first = characters::get(conn, character_id)?
-        .and_then(|c| c.first_messages.into_iter().next())
-        .filter(|s| !s.trim().is_empty());
-    if let Some(greeting) = first {
-        messages::insert(conn, &id, "assistant", &greeting)?;
+    if let Some(character) = characters::get(conn, character_id)? {
+        let idx = greeting_index
+            .filter(|i| *i < character.first_messages.len())
+            .unwrap_or(0);
+        let first = character.first_messages.into_iter().nth(idx);
+        if let Some(greeting) = first.filter(|s| !s.trim().is_empty()) {
+            messages::insert(conn, &id, "assistant", &greeting)?;
+        }
     }
     Ok(Conversation {
         id,
