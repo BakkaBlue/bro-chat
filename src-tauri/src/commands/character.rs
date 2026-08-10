@@ -52,6 +52,12 @@ pub fn delete_character(state: State<AppState>, id: String) -> Result<(), String
     })
 }
 
+/// 拖拽排序：按给定 id 顺序重排全部角色
+#[tauri::command]
+pub fn reorder_characters(state: State<AppState>, ids: Vec<String>) -> Result<(), String> {
+    with_db(&state, |conn| characters::reorder(conn, &ids))
+}
+
 #[tauri::command]
 pub fn import_card(state: State<AppState>, path: String) -> Result<Character, String> {
     // 文件读取在锁外进行（避免大 PNG 卡阻塞数据库操作）

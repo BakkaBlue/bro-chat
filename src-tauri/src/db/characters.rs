@@ -13,7 +13,7 @@ fn parse_json_string_array(s: String) -> Vec<String> {
 pub fn list_summaries(conn: &Connection) -> AppResult<Vec<CharacterSummary>> {
     let mut stmt = conn.prepare(
         "SELECT id, name, tags, nsfw, avatar, extensions, updated_at
-         FROM characters ORDER BY updated_at DESC",
+         FROM characters ORDER BY sort_order ASC, created_at ASC",
     )?;
     let rows = stmt.query_map([], |r| {
         let avatar: Option<Vec<u8>> = r.get(4)?;
@@ -84,12 +84,17 @@ pub fn create(conn: &Connection, input: &CharacterInput) -> AppResult<Character>
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
     let avatar = avatar::decode(input.avatar.as_deref())?;
+    let sort_order: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM characters",
+        [],
+        |r| r.get(0),
+    )?;
     conn.execute(
         "INSERT INTO characters
            (id, name, description, personality, scenario, first_messages,
             example_messages, system_prompt, tags, nsfw, avatar, extensions,
-            created_at, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+            created_at, updated_at, sort_order)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
         params![
             id,
             input.name,
@@ -105,9 +110,23 @@ pub fn create(conn: &Connection, input: &CharacterInput) -> AppResult<Character>
             input.extensions.as_ref().map(|e| e.to_string()),
             now,
             now,
+            sort_order,
         ],
     )?;
     get_required(conn, &id)
+}
+
+/// 按给定 id 顺序重排（拖拽排序持久化）
+pub fn reorder(conn: &Connection, ids: &[String]) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    for (i, id) in ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE characters SET sort_order = ?1 WHERE id = ?2",
+            params![i as i64, id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 
 pub fn update(conn: &Connection, id: &str, input: &CharacterInput) -> AppResult<Character> {

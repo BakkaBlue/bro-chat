@@ -30,7 +30,6 @@ pub fn get(conn: &Connection) -> AppResult<Settings> {
             "ui_show_timestamps" => parse_into(&v, &mut s.ui_show_timestamps),
             "ui_avatar_hover_zoom" => parse_into(&v, &mut s.ui_avatar_hover_zoom),
             "ui_reduce_motion" => parse_into(&v, &mut s.ui_reduce_motion),
-            "ui_glass_blur" => parse_into(&v, &mut s.ui_glass_blur),
             "ui_text_shadow" => parse_into(&v, &mut s.ui_text_shadow),
             "ui_message_animation" => parse_into(&v, &mut s.ui_message_animation),
             "ui_auto_expand_actions" => parse_into(&v, &mut s.ui_auto_expand_actions),
@@ -60,7 +59,7 @@ fn parse_into<T: serde::de::DeserializeOwned>(v: &str, target: &mut T) {
 
 /// 整体 upsert 全部设置键。
 pub fn update(conn: &Connection, s: &Settings) -> AppResult<()> {
-    let entries: [(&str, String); 32] = [
+    let entries: [(&str, String); 31] = [
         ("base_url", s.base_url.clone()),
         ("api_key", s.api_key.clone()),
         ("model", s.model.clone()),
@@ -81,7 +80,6 @@ pub fn update(conn: &Connection, s: &Settings) -> AppResult<()> {
             serde_json::to_string(&s.ui_avatar_hover_zoom)?,
         ),
         ("ui_reduce_motion", serde_json::to_string(&s.ui_reduce_motion)?),
-        ("ui_glass_blur", serde_json::to_string(&s.ui_glass_blur)?),
         ("ui_text_shadow", serde_json::to_string(&s.ui_text_shadow)?),
         (
             "ui_message_animation",

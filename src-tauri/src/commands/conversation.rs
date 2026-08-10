@@ -74,3 +74,13 @@ pub fn clear_conversation(state: State<AppState>, id: String) -> Result<(), Stri
     }
     with_db(&state, |conn| messages::delete_all(conn, &id))
 }
+
+/// 拖拽排序：按给定 id 顺序重排某角色下的对话
+#[tauri::command]
+pub fn reorder_conversations(
+    state: State<AppState>,
+    character_id: String,
+    ids: Vec<String>,
+) -> Result<(), String> {
+    with_db(&state, |conn| conversations::reorder(conn, &character_id, &ids))
+}

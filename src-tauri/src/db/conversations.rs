@@ -17,7 +17,7 @@ pub fn list_by_character(
          LEFT JOIN messages m ON m.conversation_id = c.id
          WHERE c.character_id = ?1
          GROUP BY c.id
-         ORDER BY c.updated_at DESC",
+         ORDER BY c.sort_order ASC, c.created_at ASC",
     )?;
     let rows = stmt.query_map(params![character_id], |r| {
         Ok(ConversationSummary {
@@ -44,10 +44,15 @@ pub fn create(
 ) -> AppResult<Conversation> {
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
+    let sort_order: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM conversations WHERE character_id = ?1",
+        params![character_id],
+        |r| r.get(0),
+    )?;
     conn.execute(
-        "INSERT INTO conversations (id, character_id, title, created_at, updated_at)
-         VALUES (?1, ?2, '新对话', ?3, ?3)",
-        params![id, character_id, now],
+        "INSERT INTO conversations (id, character_id, title, created_at, updated_at, sort_order)
+         VALUES (?1, ?2, '新对话', ?3, ?3, ?4)",
+        params![id, character_id, now, sort_order],
     )?;
     if let Some(character) = characters::get(conn, character_id)? {
         let idx = greeting_index
@@ -114,5 +119,18 @@ pub fn rename_if_untitled(conn: &Connection, id: &str, title: &str) -> AppResult
 
 pub fn delete(conn: &Connection, id: &str) -> AppResult<()> {
     conn.execute("DELETE FROM conversations WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+/// 按给定 id 顺序重排该角色下的对话（拖拽排序持久化）
+pub fn reorder(conn: &Connection, character_id: &str, ids: &[String]) -> AppResult<()> {
+    let tx = conn.unchecked_transaction()?;
+    for (i, id) in ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE conversations SET sort_order = ?1 WHERE id = ?2 AND character_id = ?3",
+            params![i as i64, id, character_id],
+        )?;
+    }
+    tx.commit()?;
     Ok(())
 }

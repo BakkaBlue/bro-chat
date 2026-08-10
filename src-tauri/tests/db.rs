@@ -44,14 +44,14 @@ fn migration_is_idempotent_and_sets_version() {
         let v: i64 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(v, 2);
+        assert_eq!(v, 3);
     }
     // 再次打开：迁移必须幂等
     let conn = db::init_conn(&path).unwrap();
     let v: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(v, 2);
+    assert_eq!(v, 3);
     // WAL 生效
     let mode: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))

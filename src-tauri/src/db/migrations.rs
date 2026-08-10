@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS lore_entries (
 CREATE INDEX IF NOT EXISTS idx_lore_entries_book ON lore_entries(lorebook_id);
 ";
 
+const MIGRATION_3: &str = "
+-- 拖拽排序：角色与对话加 sort_order，初始按插入顺序
+ALTER TABLE characters ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE conversations ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+UPDATE characters SET sort_order = rowid;
+UPDATE conversations SET sort_order = rowid;
+";
+
 /// 版本化迁移：PRAGMA user_version 控制，每个版本在事务内应用。
 pub fn migrate(conn: &mut Connection) -> Result<(), rusqlite::Error> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
@@ -88,6 +96,12 @@ pub fn migrate(conn: &mut Connection) -> Result<(), rusqlite::Error> {
         let tx = conn.transaction()?;
         tx.execute_batch(MIGRATION_2)?;
         tx.pragma_update(None, "user_version", 2)?;
+        tx.commit()?;
+    }
+    if version < 3 {
+        let tx = conn.transaction()?;
+        tx.execute_batch(MIGRATION_3)?;
+        tx.pragma_update(None, "user_version", 3)?;
         tx.commit()?;
     }
     Ok(())

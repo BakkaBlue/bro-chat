@@ -129,8 +129,6 @@ pub struct Settings {
     #[serde(default)]
     pub ui_reduce_motion: bool,
     #[serde(default)]
-    pub ui_glass_blur: bool,
-    #[serde(default)]
     pub ui_text_shadow: bool,
     #[serde(default = "Settings::default_true")]
     pub ui_message_animation: bool,
@@ -191,7 +189,6 @@ impl Default for Settings {
             ui_show_timestamps: Self::default_true(),
             ui_avatar_hover_zoom: Self::default_true(),
             ui_reduce_motion: false,
-            ui_glass_blur: false,
             ui_text_shadow: false,
             ui_message_animation: Self::default_true(),
             ui_auto_expand_actions: false,
