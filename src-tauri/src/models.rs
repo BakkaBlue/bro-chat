@@ -51,13 +51,14 @@ pub struct CharacterInput {
     pub extensions: Option<serde_json::Value>,
 }
 
-/// 侧边栏列表摘要（不含头像与大字段）
+/// 侧边栏列表摘要（头像以 data URL 返回，便于列表直接渲染）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CharacterSummary {
     pub id: String,
     pub name: String,
     pub tags: Vec<String>,
     pub nsfw: bool,
+    pub avatar: Option<String>,
     pub updated_at: String,
 }
 

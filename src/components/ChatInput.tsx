@@ -1,22 +1,29 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useChatStore } from "../stores/chatStore";
 
-// 输入区：Enter 发送、Shift+Enter 换行；生成中变停止按钮
+// 输入区：Enter 发送、Shift+Enter 换行；生成中变停止按钮。
+// 中文输入法组合（IME）期间的 Enter 不应触发发送。
 export default function ChatInput() {
   const [text, setText] = useState("");
   const send = useChatStore((s) => s.send);
   const stop = useChatStore((s) => s.stop);
   const streaming = useChatStore((s) => s.streaming);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const canSend = text.trim().length > 0 && !streaming;
 
+  const submit = () => {
+    if (!canSend) return;
+    send(text);
+    setText("");
+    textareaRef.current?.focus();
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return; // IME 组合中
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (canSend) {
-        send(text);
-        setText("");
-      }
+      submit();
     }
   };
 
@@ -24,6 +31,7 @@ export default function ChatInput() {
     <div className="border-t border-neutral-200 p-3 dark:border-neutral-700">
       <div className="flex items-end gap-2">
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
@@ -40,12 +48,7 @@ export default function ChatInput() {
           </button>
         ) : (
           <button
-            onClick={() => {
-              if (canSend) {
-                send(text);
-                setText("");
-              }
-            }}
+            onClick={submit}
             disabled={!canSend}
             className="shrink-0 rounded-lg bg-neutral-800 px-4 py-2 text-xs text-white hover:bg-neutral-700 disabled:opacity-40 dark:bg-neutral-200 dark:text-neutral-900 dark:hover:bg-white"
           >

@@ -3,6 +3,7 @@ import type { ConversationSummary } from "../types";
 import * as api from "../api/commands";
 import { useUiStore } from "./uiStore";
 import { useChatStore } from "./chatStore";
+import { useCharacterStore } from "./characterStore";
 
 interface ConversationState {
   items: ConversationSummary[];
@@ -10,6 +11,7 @@ interface ConversationState {
   loading: boolean;
 
   loadForCharacter: (characterId: string | null) => Promise<void>;
+  refresh: () => Promise<void>;
   select: (id: string) => void;
   create: (characterId: string) => Promise<ConversationSummary | null>;
   remove: (id: string) => Promise<void>;
@@ -42,6 +44,12 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  /** 刷新当前角色的对话列表（标题/消息数/排序变化后调用） */
+  refresh: async () => {
+    const charId = useCharacterStore.getState().selectedId;
+    if (charId) await get().loadForCharacter(charId);
   },
 
   select: (id) => {

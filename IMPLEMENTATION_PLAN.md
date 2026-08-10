@@ -33,14 +33,14 @@ Tauri 2.11 / React 19 / TypeScript / Vite 7 / Tailwind CSS v4 / Zustand 5 / rusq
 **Goal**: 长对话保持正确；UI 精致且全中文。
 **Success Criteria**: 300 条消息对话流式正常且 prompt 有界；所有错误路径 UI 一致；无残留英文。
 **Tests**: 300 条消息集成测试；孤立 user 消息裁剪；预算=0 边界。
-**Status**: 未开始
+**Status**: Complete
 
 ## Stage 5 — 打包与文档
 
 **Goal**: 可分发的 Windows 应用。
 **Success Criteria**: `npm run tauri build` 出安装包；另一台 Win11 安装可用且数据持久。
 **Tests**: 备份恢复流程手验一次。
-**Status**: 未开始
+**Status**: In Progress
 
 ## Windows 风险与备忘
 

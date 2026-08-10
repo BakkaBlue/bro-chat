@@ -27,7 +27,16 @@ export default function CharacterListItem({
       }`}
     >
       <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-neutral-200 text-[10px] text-neutral-500 dark:bg-neutral-700">
-        {summary.name.charAt(0)}
+        {summary.avatar ? (
+          <img
+            src={summary.avatar}
+            alt={summary.name}
+            className="size-full object-cover"
+            onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
+          />
+        ) : (
+          summary.name.charAt(0)
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">

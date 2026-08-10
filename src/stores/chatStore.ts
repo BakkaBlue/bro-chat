@@ -65,6 +65,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     try {
       const requestId = await api.sendMessage(selectedId, text);
+      // 发送后刷新列表（自动标题/消息数/排序变化）
+      useConversationStore.getState().refresh();
       set((s) => ({
         messages: [
           ...s.messages,
@@ -107,6 +109,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const convId = streaming.conversationId;
     set({ streaming: null, lastError: null });
     get().load(convId);
+    useConversationStore.getState().refresh();
   },
 
   onError: (p) => {

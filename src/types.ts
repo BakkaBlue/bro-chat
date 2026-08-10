@@ -36,6 +36,7 @@ export interface CharacterSummary {
   name: string;
   tags: string[];
   nsfw: boolean;
+  avatar: string | null;
   updated_at: string;
 }
 
