@@ -19,7 +19,7 @@ Tauri 2.11 / React 19 / TypeScript / Vite 7 / Tailwind CSS v4 / Zustand 5 / rusq
 **Goal**: 侧边栏角色管理 + SillyTavern PNG/JSON 卡导入导出。
 **Success Criteria**: 从磁盘导入真实卡（头像+全部字段正确）；导出再导入数据一致；UI 手动 CRUD 可用。
 **Tests**: v2 JSON→Character→v2 JSON 无损往返（含 extensions 透传）；v1 导入；first_mes+alternate_greetings 双向映射；PNG 嵌→提→比对；data URL base64 前缀容忍；avatar BLOB 字节精确；tempfile 临时文件。
-**Status**: 未开始
+**Status**: Complete
 
 ## Stage 3 — 对话与流式聊天
 

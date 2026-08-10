@@ -1,3 +1,5 @@
+pub mod avatar;
+pub mod cards;
 mod commands;
 pub mod db;
 mod error;
@@ -19,7 +21,15 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            commands::character::list_characters,
+            commands::character::get_character,
+            commands::character::create_character,
+            commands::character::update_character,
+            commands::character::delete_character,
+            commands::character::import_card,
+            commands::character::export_card,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

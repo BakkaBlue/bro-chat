@@ -1,2 +1,15 @@
-// Tauri 命令薄封装。Stage 2 起按功能模块添加。
-// 所有命令返回 Result<T, String>，错误消息直接给前端展示。
+use rusqlite::Connection;
+
+use crate::error::AppResult;
+use crate::state::AppState;
+
+pub mod character;
+
+/// 锁库并执行数据层函数，错误转为给前端的中文消息
+pub(crate) fn with_db<T>(
+    state: &AppState,
+    f: impl FnOnce(&Connection) -> AppResult<T>,
+) -> Result<T, String> {
+    let conn = state.db.lock().unwrap();
+    f(&conn).map_err(|e| e.to_string())
+}
