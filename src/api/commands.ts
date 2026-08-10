@@ -33,6 +33,10 @@ export const deleteConversation = (id: string) =>
   invoke<void>("delete_conversation", { id });
 export const getMessages = (conversationId: string) =>
   invoke<Message[]>("get_messages", { conversationId });
+export const updateMessage = (id: string, content: string) =>
+  invoke<void>("update_message", { id, content });
+export const clearConversation = (id: string) =>
+  invoke<void>("clear_conversation", { id });
 
 // 世界书
 export const getLorebook = (characterId: string) =>

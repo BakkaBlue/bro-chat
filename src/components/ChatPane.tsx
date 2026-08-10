@@ -3,12 +3,14 @@ import { useChatStore } from "../stores/chatStore";
 import { useConversationStore } from "../stores/conversationStore";
 import { useCharacterStore } from "../stores/characterStore";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useUiStore } from "../stores/uiStore";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
+import * as api from "../api/commands";
 
-// 右栏：对话头部 + 消息列表 + 输入区
+// 右栏：对话头部（重载/清理）+ 消息列表 + 输入区
 export default function ChatPane() {
-  const { messages, loading, lastError, streaming } = useChatStore();
+  const { messages, loading, lastError, streaming, lastReplyMs, load } = useChatStore();
   const convId = useConversationStore((s) => s.selectedId);
   const convTitle = useConversationStore(
     (s) => s.items.find((c) => c.id === s.selectedId)?.title,
@@ -17,12 +19,16 @@ export default function ChatPane() {
     (s) => s.items.find((c) => c.id === s.selectedId)?.name,
   );
   const model = useSettingsStore((s) => s.settings?.model);
+  const settings = useSettingsStore((s) => s.settings);
+  const askConfirm = useUiStore((s) => s.askConfirm);
+  const showToast = useUiStore((s) => s.showToast);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [stickToBottom, setStickToBottom] = useState(true);
 
   const streamingText = streaming?.conversationId === convId ? streaming.text : null;
   const streamingActive = streaming !== null && streaming.conversationId === convId;
+  const autoScroll = settings?.chat_auto_scroll ?? true;
 
   // 最后一条 assistant 回复的 id（只有它可重新生成）
   const lastAssistantId = useMemo(() => {
@@ -36,14 +42,33 @@ export default function ChatPane() {
   // 新内容时自动滚底（用户上滚时不打扰）
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !stickToBottom) return;
+    if (!el || !autoScroll || !stickToBottom) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages.length, streamingText, stickToBottom]);
+  }, [messages.length, streamingText, stickToBottom, autoScroll]);
 
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
     setStickToBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 60);
+  };
+
+  const clearChat = () => {
+    if (!convId) return;
+    const doClear = async () => {
+      try {
+        await api.clearConversation(convId);
+        await load(convId);
+        useConversationStore.getState().refresh();
+        showToast("对话已清理");
+      } catch (e) {
+        showToast(`清理失败: ${e}`);
+      }
+    };
+    if (settings?.chat_confirm_delete) {
+      askConfirm("清空这段对话？", "全部消息将被删除，且无法恢复。", doClear);
+    } else {
+      doClear();
+    }
   };
 
   if (!convId) {
@@ -58,12 +83,31 @@ export default function ChatPane() {
 
   return (
     <main className="flex min-h-0 flex-col">
-      <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-700">
+      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2.5 dark:border-neutral-700">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{convTitle}</h2>
           <p className="truncate text-[11px] text-neutral-400">
             {charName} {model ? `· ${model}` : ""}
           </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {settings?.ui_reply_timer && lastReplyMs !== null && !streamingActive && (
+            <span className="text-[10px] text-neutral-400">⏱ {(lastReplyMs / 1000).toFixed(1)}s</span>
+          )}
+          <button
+            onClick={() => load(convId)}
+            title="重新加载聊天"
+            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          >
+            ↻
+          </button>
+          <button
+            onClick={clearChat}
+            title="清理当前对话"
+            className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] text-neutral-400 hover:bg-rose-50 hover:text-rose-500 dark:border-neutral-600 dark:hover:bg-rose-900/20"
+          >
+            🗑
+          </button>
         </div>
       </header>
 

@@ -16,3 +16,66 @@ body {
     -apple-system,
     sans-serif;
 }
+
+/* ---- UI 效果（由设置项驱动，挂载在应用根元素上） ---- */
+
+/* 减少动态效果：关闭全部动画与过渡 */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* 模糊效果：面板毛玻璃 */
+.glass-blur aside,
+.glass-blur main > header,
+.glass-blur .glass-panel {
+  background: color-mix(in srgb, var(--color-neutral-100) 70%, transparent) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.glass-blur .dark aside,
+.glass-blur .dark main > header,
+.glass-blur .dark .glass-panel {
+  background: color-mix(in srgb, var(--color-neutral-900) 70%, transparent) !important;
+}
+
+/* 文本阴影 */
+.text-shadow .msg-bubble .prose {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+/* 头像圆形 */
+.avatar-circle img.avatar-img {
+  border-radius: 9999px;
+}
+
+/* 聊天平铺风格 */
+.chat-flat .msg-bubble {
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+}
+
+/* 消息渐入动画 */
+.msg-anim .msg-bubble {
+  animation: msg-in 0.25s ease-out;
+}
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 头像悬停放大 */
+.avatar-hover-zoom img.avatar-img {
+  transition: transform 0.2s ease;
+}
+.avatar-hover-zoom .avatar-wrap:hover img.avatar-img {
+  transform: scale(1.15);
+}

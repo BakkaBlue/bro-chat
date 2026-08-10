@@ -19,6 +19,7 @@ export default function App() {
   const selectedCharId = useCharacterStore((s) => s.selectedId);
   const loadCharacters = useCharacterStore((s) => s.load);
   const loadSettings = useSettingsStore((s) => s.load);
+  const settings = useSettingsStore((s) => s.settings);
 
   // 启动：加载角色列表与设置
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function App() {
   }, []);
 
   // 界面设置：主题（跟随系统/浅/深）
-  const uiTheme = useSettingsStore((s) => s.settings?.ui_theme);
+  const uiTheme = settings?.ui_theme;
   useEffect(() => {
     const t = uiTheme ?? "system";
     const apply = () => {
@@ -62,10 +63,60 @@ export default function App() {
   }, [uiTheme]);
 
   // 界面设置：消息字号
-  const uiFontSize = useSettingsStore((s) => s.settings?.ui_font_size);
   useEffect(() => {
-    document.documentElement.style.setProperty("--msg-font-size", `${uiFontSize ?? 13}px`);
-  }, [uiFontSize]);
+    document.documentElement.style.setProperty(
+      "--msg-font-size",
+      `${settings?.ui_font_size ?? 13}px`,
+    );
+  }, [settings?.ui_font_size]);
+
+  // 界面设置：效果 class 组合（毛玻璃/文本阴影/减少动画/头像样式/聊天风格/消息动画/悬停放大）
+  useEffect(() => {
+    const cls = document.getElementById("app-root");
+    if (!cls) return;
+    const s = settings;
+    const list = [
+      s?.ui_glass_blur ? "glass-blur" : "",
+      s?.ui_text_shadow ? "text-shadow" : "",
+      s?.ui_reduce_motion ? "reduce-motion" : "",
+      s?.ui_avatar_style === "circle" ? "avatar-circle" : "",
+      s?.ui_chat_style === "flat" ? "chat-flat" : "",
+      s?.ui_message_animation ? "msg-anim" : "",
+      s?.ui_avatar_hover_zoom ? "avatar-hover-zoom" : "",
+    ].filter(Boolean);
+    cls.className = list.join(" ");
+  }, [
+    settings?.ui_glass_blur,
+    settings?.ui_text_shadow,
+    settings?.ui_reduce_motion,
+    settings?.ui_avatar_style,
+    settings?.ui_chat_style,
+    settings?.ui_message_animation,
+    settings?.ui_avatar_hover_zoom,
+  ]);
+
+  // 自动化：启动后自动加载上次对话（等角色列表就绪后执行）
+  const charCount = useCharacterStore((s) => s.items.length);
+  useEffect(() => {
+    if (!settings?.chat_auto_load_last) return;
+    if (charCount === 0) return; // 角色列表还没加载完
+    const saved = localStorage.getItem("brochat.lastConversation");
+    if (!saved) return;
+    const [charId, convId] = saved.split("|");
+    const { items } = useCharacterStore.getState();
+    if (!charId || !convId || !items.some((c) => c.id === charId)) return;
+    useCharacterStore.getState().select(charId);
+    // 对话列表加载完成后选中（轮询，最多等 1s）
+    const trySelect = (attempt: number) => {
+      const convs = useConversationStore.getState().items;
+      if (convs.some((c) => c.id === convId)) {
+        useConversationStore.getState().select(convId);
+      } else if (attempt < 10) {
+        setTimeout(() => trySelect(attempt + 1), 100);
+      }
+    };
+    setTimeout(() => trySelect(0), 50);
+  }, [settings?.chat_auto_load_last, charCount]);
 
   if (view === "settings") {
     return (
@@ -77,7 +128,10 @@ export default function App() {
   }
 
   return (
-    <div className="grid h-screen grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
+    <div
+      id="app-root"
+      className="grid h-screen grid-cols-[288px_260px_1fr] bg-neutral-100 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+    >
       <Sidebar />
       <ConversationPanel />
       <ChatPane />

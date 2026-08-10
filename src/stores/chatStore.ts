@@ -4,11 +4,14 @@ import * as api from "../api/commands";
 import type { ChunkPayload, CancelledPayload, DonePayload, ErrorPayload } from "../api/events";
 import { useUiStore } from "./uiStore";
 import { useConversationStore } from "./conversationStore";
+import { useSettingsStore } from "./settingsStore";
+import { playSendSound } from "../utils/sound";
 
 interface StreamingState {
   requestId: string;
   conversationId: string;
   text: string;
+  startedAt: number;
 }
 
 interface ChatState {
@@ -16,12 +19,16 @@ interface ChatState {
   streaming: StreamingState | null;
   loading: boolean;
   lastError: string | null;
+  /** 最近一次回复耗时（毫秒，AI 回复计时器用） */
+  lastReplyMs: number | null;
 
   load: (conversationId: string | null) => Promise<void>;
   send: (content: string) => Promise<void>;
   stop: () => void;
   /** 重新生成最后一条 assistant 回复（Rust 侧删除该条后重新流式请求） */
   regenerate: () => Promise<void>;
+  /** 编辑消息内容（自动保存） */
+  editMessage: (id: string, content: string) => Promise<void>;
   reset: () => void;
 
   // 事件层回调（App.tsx 注册 listen 后分发到这里）
@@ -36,6 +43,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streaming: null,
   loading: false,
   lastError: null,
+  lastReplyMs: null,
 
   load: async (conversationId) => {
     if (!conversationId) {
@@ -69,6 +77,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const requestId = await api.sendMessage(selectedId, text);
       // 发送后刷新列表（自动标题/消息数/排序变化）
       useConversationStore.getState().refresh();
+      if (useSettingsStore.getState().settings?.chat_sound) playSendSound();
       set((s) => ({
         messages: [
           ...s.messages,
@@ -81,7 +90,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
             created_at: new Date().toISOString(),
           },
         ],
-        streaming: { requestId, conversationId: selectedId, text: "" },
+        streaming: {
+          requestId,
+          conversationId: selectedId,
+          text: "",
+          startedAt: Date.now(),
+        },
+        lastReplyMs: null,
       }));
     } catch (e) {
       set({ lastError: String(e) });
@@ -112,10 +127,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({
         messages: trimmed,
         lastError: null,
-        streaming: { requestId, conversationId: selectedId, text: "" },
+        lastReplyMs: null,
+        streaming: {
+          requestId,
+          conversationId: selectedId,
+          text: "",
+          startedAt: Date.now(),
+        },
       });
     } catch (e) {
       set({ lastError: String(e) });
+    }
+  },
+
+  editMessage: async (id, content) => {
+    set((s) => ({
+      messages: s.messages.map((m) => (m.id === id ? { ...m, content } : m)),
+    }));
+    try {
+      await api.updateMessage(id, content);
+    } catch (e) {
+      set({ lastError: `编辑保存失败: ${e}` });
     }
   },
 
@@ -133,7 +165,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { streaming } = get();
     if (!streaming || streaming.requestId !== p.requestId) return;
     const convId = streaming.conversationId;
-    set({ streaming: null, lastError: null });
+    const replyMs = Date.now() - streaming.startedAt;
+    set({ streaming: null, lastError: null, lastReplyMs: replyMs });
     get().load(convId);
     useConversationStore.getState().refresh();
   },

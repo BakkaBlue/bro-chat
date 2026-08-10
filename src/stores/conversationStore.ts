@@ -58,6 +58,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   select: (id) => {
     set({ selectedId: id });
+    // 记录上次对话（自动加载设置用）
+    const conv = get().items.find((c) => c.id === id);
+    if (conv) {
+      localStorage.setItem("brochat.lastConversation", `${conv.character_id}|${id}`);
+    }
     useChatStore.getState().load(id);
   },
 

@@ -37,6 +37,7 @@ export interface CharacterSummary {
   tags: string[];
   nsfw: boolean;
   avatar: string | null;
+  character_version: string | null;
   updated_at: string;
 }
 
@@ -68,6 +69,29 @@ export interface Settings {
   system_prompt: string;
   ui_theme: "system" | "light" | "dark";
   ui_font_size: number;
+  ui_avatar_style: string; // "" | "circle"
+  ui_chat_style: string; // "" | "flat"
+  ui_show_timestamps: boolean;
+  ui_avatar_hover_zoom: boolean;
+  ui_reduce_motion: boolean;
+  ui_glass_blur: boolean;
+  ui_text_shadow: boolean;
+  ui_message_animation: boolean;
+  ui_auto_expand_actions: boolean;
+  ui_reply_timer: boolean;
+  ui_show_floor: boolean;
+  ui_show_token_count: boolean;
+  ui_click_to_edit: boolean;
+  char_show_version: boolean;
+  chat_sound: boolean;
+  chat_debug_prompt: boolean;
+  chat_load_messages: number;
+  chat_auto_scroll: boolean;
+  chat_confirm_delete: boolean;
+  chat_block_external_media: boolean;
+  chat_substitute_in_assistant: boolean;
+  chat_enter_mode: string; // "" | "newline"
+  chat_auto_load_last: boolean;
 }
 
 // ---------- 世界书（lorebook） ----------

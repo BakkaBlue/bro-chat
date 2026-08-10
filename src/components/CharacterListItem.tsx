@@ -1,6 +1,7 @@
 import type { CharacterSummary } from "../types";
 import { useCharacterStore } from "../stores/characterStore";
 import { useUiStore } from "../stores/uiStore";
+import { useSettingsStore } from "../stores/settingsStore";
 
 // 角色列表项：头像 + 名称 + 标签；悬停显示导出/编辑/删除
 export default function CharacterListItem({
@@ -16,6 +17,7 @@ export default function CharacterListItem({
   const remove = useCharacterStore((s) => s.remove);
   const openEditor = useUiStore((s) => s.openEditor);
   const askConfirm = useUiStore((s) => s.askConfirm);
+  const showVersion = useSettingsStore((s) => s.settings?.char_show_version ?? false);
 
   return (
     <div
@@ -51,6 +53,9 @@ export default function CharacterListItem({
           <div className="truncate text-[10px] text-neutral-400">
             {summary.tags.slice(0, 3).join(" · ")}
           </div>
+        )}
+        {showVersion && summary.character_version && (
+          <div className="text-[10px] text-neutral-400">v{summary.character_version}</div>
         )}
       </div>
       <div className="hidden shrink-0 gap-0.5 group-hover:flex">
